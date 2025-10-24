@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client/edge";
 import { PrismaD1 } from "@prisma/adapter-d1";
 
 const PRISMA_CACHE = Symbol.for("domain-alert.prisma");
