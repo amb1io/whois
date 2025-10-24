@@ -29,6 +29,12 @@ const formatList = (list: unknown): string => {
   return list.map((item) => String(item)).join(", ");
 };
 
+const toNullableString = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+  const str = String(value).trim();
+  return str === "" ? null : str;
+};
+
 type WhoisResponse = Awaited<ReturnType<typeof whois>>;
 
 const formatDate = (value: unknown): string => {
@@ -60,7 +66,7 @@ const persistWhoisResult = async (domain: string, data: WhoisResponse) => {
   const record = {
     domain,
     registrar: data.registrar?.name ?? null,
-    registrarId: data.registrar?.id ?? null,
+    registrarId: toNullableString(data.registrar?.id),
     registrarEmail: data.registrar?.email ?? null,
     reseller: data.reseller ?? null,
     statuses: normalizeList(data.status ?? []),
