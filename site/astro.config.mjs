@@ -2,6 +2,9 @@
 import { defineConfig } from 'astro/config';
 import cloudflare from '@astrojs/cloudflare';
 import tailwindcss from '@tailwindcss/vite';
+import { fileURLToPath } from 'node:url';
+
+const dnsPolyfillPath = fileURLToPath(new URL('./src/polyfills/dns-promises.ts', import.meta.url));
 
 // https://astro.build/config
 export default defineConfig({
@@ -22,6 +25,11 @@ export default defineConfig({
     server: {
       watch: {
         ignored: ['**/.wrangler/**', '**/prisma/dev.db*']
+      }
+    },
+    resolve: {
+      alias: {
+        'dns/promises': dnsPolyfillPath
       }
     }
   }
