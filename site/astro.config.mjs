@@ -33,6 +33,9 @@ export default defineConfig({
         'dns/promises': dnsPolyfillPath,
         net: netPolyfillPath
       }
+    },
+    ssr: {
+      noExternal: ['@prisma/client', '.prisma/client']
     }
   }
 });
