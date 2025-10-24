@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client/edge";
+import { PrismaClient } from "@prisma/client";
 import { PrismaD1 } from "@prisma/adapter-d1";
 
 const PRISMA_CACHE = Symbol.for("domain-alert.prisma");
@@ -8,7 +8,9 @@ type PrismaCache = WeakMap<any, PrismaClient>;
 export const getPrismaClient = (binding: unknown): PrismaClient | null => {
   if (!binding) return null;
 
-  const globalWithCache = globalThis as typeof globalThis & { [PRISMA_CACHE]?: PrismaCache };
+  const globalWithCache = globalThis as typeof globalThis & {
+    [PRISMA_CACHE]?: PrismaCache;
+  };
   globalWithCache[PRISMA_CACHE] ??= new WeakMap();
 
   const cache = globalWithCache[PRISMA_CACHE]!;
