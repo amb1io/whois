@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const dnsPolyfillPath = fileURLToPath(new URL('./src/polyfills/dns-promises.ts', import.meta.url));
 const netPolyfillPath = fileURLToPath(new URL('./src/polyfills/net.ts', import.meta.url));
+const prismaEdgePath = fileURLToPath(new URL('./node_modules/.prisma/client/edge.js', import.meta.url));
 
 // https://astro.build/config
 export default defineConfig({
@@ -31,7 +32,8 @@ export default defineConfig({
     resolve: {
       alias: {
         'dns/promises': dnsPolyfillPath,
-        net: netPolyfillPath
+        net: netPolyfillPath,
+        '.prisma/client/edge': prismaEdgePath
       }
     },
     ssr: {
