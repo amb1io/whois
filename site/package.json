@@ -1,0 +1,28 @@
+{
+  "name": "site",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^12.6.10",
+    "@cleandns/whois-rdap": "^1.0.52",
+    "@prisma/adapter-d1": "^6.18.0",
+    "@prisma/client": "^6.18.0",
+    "@tailwindcss/vite": "^4.1.16",
+    "astro": "^5.15.0",
+    "tailwindcss": "^4.1.16",
+    "whois": "^2.15.0"
+  },
+  "devDependencies": {
+    "dotenv": "^17.2.3",
+    "prisma": "^6.18.0"
+  }
+}

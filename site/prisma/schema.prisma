@@ -1,0 +1,46 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Domain {
+  id             Int       @id @default(autoincrement())
+  domain         String
+  registrar      String?
+  registrarId    String?   @map("registrar_id")
+  registrarEmail String?   @map("registrar_email")
+  reseller       String?
+  statuses       Json?
+  nameservers    Json?
+  createdAt      DateTime? @map("created_at")
+  updatedAt      DateTime? @map("updated_at")
+  expiresAt      DateTime? @map("expires_at")
+  processAt      DateTime  @default(now()) @map("process_at")
+
+  @@index([domain])
+  @@index([processAt])
+  @@map("domains")
+}
+
+model Subscription {
+  id            Int      @id @default(autoincrement())
+  endpoint      String
+  auth          String
+  p256dh        String
+  domain        String
+  notifyChanges Boolean  @default(false) @map("notify_changes")
+  notifyExpiry  Boolean  @default(false) @map("notify_expiry")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([endpoint, domain])
+  @@index([domain])
+  @@map("subscriptions")
+}

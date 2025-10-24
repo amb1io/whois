@@ -1,0 +1,12 @@
+name = "domain-alert"
+compatibility_date = "2024-06-20"
+main = "./dist/_worker.js/index.js"
+
+[site]
+  bucket = "./dist/client"
+
+[[d1_databases]]
+binding = "domain_monitor"
+database_name = "domain-monitor"
+database_id = "8b21eb9b-08fb-47e5-889c-cd2a68181e0b"
+migrations_dir = "migrations"

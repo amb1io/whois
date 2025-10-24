@@ -1,0 +1,217 @@
+---
+import { whois } from "@cleandns/whois-rdap";
+import { getPrismaClient } from "../../lib/prisma";
+
+export const prerender = false;
+
+const jsonHeaders = {
+  "Content-Type": "application/json",
+  "Cache-Control": "no-store",
+} as const;
+
+const { request, url, response } = Astro;
+response.headers.set("Cache-Control", "no-store");
+
+const acceptHeader = request.headers.get("accept") ?? "";
+const isHxRequest = request.headers.get("hx-request") === "true";
+const wantsJSON = acceptHeader.includes("application/json") && !isHxRequest;
+
+const domainParam = url.searchParams.get("domain");
+const domain = domainParam?.trim().toLowerCase() ?? "";
+
+const formatValue = (value: unknown): string => {
+  if (value === undefined || value === null || value === "") return "—";
+  return String(value);
+};
+
+const formatList = (list: unknown): string => {
+  if (!Array.isArray(list) || list.length === 0) return "—";
+  return list.map((item) => String(item)).join(", ");
+};
+
+type WhoisResponse = Awaited<ReturnType<typeof whois>>;
+
+const formatDate = (value: unknown): string => {
+  if (!value) return "—";
+  const date = value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString();
+};
+
+const toDate = (value: unknown): Date | null => {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const persistWhoisResult = async (domain: string, data: WhoisResponse) => {
+  const db = Astro.locals.runtime?.env?.domain_monitor;
+  const prisma = getPrismaClient(db);
+
+  if (!prisma) {
+    return;
+  }
+
+  const normalizeList = (value: unknown[] | null | undefined): string[] | null => {
+    if (!Array.isArray(value) || value.length === 0) return null;
+    return value.map((item) => String(item)).sort((a, b) => a.localeCompare(b));
+  };
+
+  const record = {
+    domain,
+    registrar: data.registrar?.name ?? null,
+    registrarId: data.registrar?.id ?? null,
+    registrarEmail: data.registrar?.email ?? null,
+    reseller: data.reseller ?? null,
+    statuses: normalizeList(data.status ?? []),
+    nameservers: normalizeList(data.nameservers ?? []),
+    createdAt: toDate(data.ts?.created),
+    updatedAt: toDate(data.ts?.updated),
+    expiresAt: toDate(data.ts?.expires)
+  };
+
+  const whereClause: Record<string, unknown> = {
+    domain: record.domain,
+    registrar: record.registrar,
+    registrarId: record.registrarId,
+    registrarEmail: record.registrarEmail,
+    reseller: record.reseller,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    expiresAt: record.expiresAt
+  };
+
+  if (record.statuses === null) {
+    whereClause.statuses = null;
+  } else {
+    whereClause.statuses = { equals: record.statuses };
+  }
+
+  if (record.nameservers === null) {
+    whereClause.nameservers = null;
+  } else {
+    whereClause.nameservers = { equals: record.nameservers };
+  }
+
+  try {
+    const existing = await prisma.domain.findFirst({
+      where: whereClause
+    });
+
+    if (existing) {
+      return;
+    }
+
+    await prisma.domain.create({
+      data: record
+    });
+  } catch (error) {
+    console.error("Failed to persist WHOIS result:", error);
+  }
+};
+
+let lookupResult: WhoisResponse | null = null;
+let errorMessage: string | null = null;
+const instructionText = "Enter a domain above to fetch WHOIS details.";
+
+if (!domain) {
+  errorMessage = "Please enter a domain to search.";
+  if (wantsJSON) {
+    return new Response(
+      JSON.stringify({ error: 'Query parameter "domain" is required.' }),
+      {
+        status: 400,
+        headers: jsonHeaders,
+      }
+    );
+  }
+} else {
+  try {
+    lookupResult = await whois(domain);
+    if (lookupResult) {
+      await persistWhoisResult(domain, lookupResult);
+    }
+    if (wantsJSON) {
+      return new Response(JSON.stringify(lookupResult), {
+        status: 200,
+        headers: jsonHeaders,
+      });
+    }
+  } catch (error) {
+    console.error("WHOIS lookup failed:", error);
+    errorMessage = "Unable to complete WHOIS lookup. Please try again later.";
+    if (wantsJSON) {
+      return new Response(JSON.stringify({ error: errorMessage }), {
+        status: 502,
+        headers: jsonHeaders,
+      });
+    }
+  }
+}
+
+const rows =
+  lookupResult === null
+    ? []
+    : ([
+        ["Domain Found", lookupResult.found ? "Yes" : "No"],
+        ["Registrar", formatValue(lookupResult.registrar?.name)],
+        ["Registrar ID", formatValue(lookupResult.registrar?.id)],
+        ["Registrar Email", formatValue(lookupResult.registrar?.email)],
+        ["Reseller", formatValue(lookupResult.reseller)],
+        ["Statuses", formatList(lookupResult.status)],
+        ["Nameservers", formatList(lookupResult.nameservers)],
+        ["Created At", formatDate(lookupResult.ts?.created)],
+        ["Updated At", formatDate(lookupResult.ts?.updated)],
+        ["Expires At", formatDate(lookupResult.ts?.expires)],
+      ] satisfies Array<[string, string]>);
+---
+
+{
+  errorMessage ? (
+    <div class="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
+      {errorMessage}
+    </div>
+  ) : lookupResult ? (
+    <div class="space-y-4 rounded-lg px-4 py-3 border border-slate-200 bg-white text-sm text-slate-600 shadow-sm">
+      {lookupResult.found ? (
+        <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 shadow-sm">
+          <p>
+            Latest lookup for{" "}
+            <span class="font-semibold text-blue-900">"{domain}"</span>.
+          </p>
+          <p class="mt-2 text-xs text-slate-600">{instructionText}</p>
+        </div>
+      ) : (
+        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 shadow-sm">
+          <p>
+            No WHOIS record found for{" "}
+            <span class="font-semibold text-amber-900">"{domain}"</span>.
+          </p>
+          <p class="mt-2 text-xs text-slate-600">{instructionText}</p>
+        </div>
+      )}
+      <div class="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <tbody class="divide-y divide-slate-200">
+            {rows.map(([label, value]) => (
+              <tr>
+                <th class="w-40 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {label}
+                </th>
+                <td class="px-4 py-3 text-sm text-slate-800">{value}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <button
+        type="button"
+        class="inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-white"
+        data-domain={domain}
+        x-on:click="$dispatch('monitor-modal:open', { domain: $el.dataset.domain })"
+      >
+        Monitor this domain
+      </button>
+    </div>
+  ) : null
+}

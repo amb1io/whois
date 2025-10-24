@@ -1,0 +1,416 @@
+---
+import "../styles/global.css";
+const year = new Date().getFullYear();
+const vapidPublicKey = import.meta.env.PUBLIC_VAPID_KEY ?? "";
+---
+
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Domain Alert</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+    <script src="https://unpkg.com/alpinejs@3.14.1" defer></script>
+    <style is:inline>
+      #whois-loading {
+        display: none;
+      }
+      #whois-loading.htmx-request {
+        display: flex;
+      }
+      [x-cloak] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body class="flex min-h-screen flex-col bg-slate-100 text-slate-900">
+    <header
+      class="flex items-center justify-end gap-6 px-6 py-4 text-sm text-slate-600"
+    >
+      <a href="#" class="transition hover:text-slate-900">Pricing</a>
+      <a href="#" class="transition hover:text-slate-900">Support</a>
+      <div class="relative" x-data="{ open: false }">
+        <button
+          type="button"
+          class="relative rounded-full border border-transparent bg-white p-2 text-slate-500 shadow-sm transition hover:border-slate-200 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-white"
+          aria-haspopup="true"
+          :aria-expanded="open"
+          @click="open = !open"
+          @keydown.escape.stop="open = false"
+        >
+          <svg
+            class="h-5 w-5"
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke-width="1.5"
+            stroke="currentColor"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 19.5 9.75v-.7c0-2.485-1.355-4.783-3.553-5.998a1.003 1.003 0 0 1-.447-.832V2.25a.75.75 0 0 0-.75-.75h-2.5a.75.75 0 0 0-.75.75v.97c0 .339-.174.655-.447.832A6.75 6.75 0 0 0 4.5 9.05v.7c0 2.676-.94 5.266-2.811 7.022a.75.75 0 0 0 .51 1.297h16.602a.75.75 0 0 0 .51-1.297 12.318 12.318 0 0 1-3.061-3.69zM9 20.25a2.25 2.25 0 0 0 4.5 0"
+            ></path>
+          </svg>
+          <span
+            class="absolute -right-0.5 -top-0.5 inline-flex h-2.5 w-2.5 rounded-full bg-blue-500"
+            aria-hidden="true"
+          ></span>
+        </button>
+        <div
+          x-cloak
+          x-show="open"
+          x-transition.origin.top.right
+          @click.outside="open = false"
+          class="absolute right-0 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-3 text-left text-sm text-slate-700 shadow-lg"
+          role="menu"
+          aria-label="Recent notifications"
+        >
+          <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Notifications
+          </p>
+          <ul class="space-y-2">
+            <li class="rounded-lg bg-slate-50 px-3 py-2">
+              <p class="text-sm font-medium text-slate-900">example.io</p>
+              <p class="text-xs text-slate-600">
+                WHOIS details updated 2 hours ago.
+              </p>
+            </li>
+            <li class="rounded-lg bg-slate-50 px-3 py-2">
+              <p class="text-sm font-medium text-slate-900">alert.me</p>
+              <p class="text-xs text-slate-600">
+                Expiration date approaching in 7 days.
+              </p>
+            </li>
+            <li class="rounded-lg bg-slate-50 px-3 py-2">
+              <p class="text-sm font-medium text-slate-900">domainalert.app</p>
+              <p class="text-xs text-slate-600">
+                Nameserver change detected.
+              </p>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <button
+        class="rounded-full border border-blue-600 px-4 py-1.5 font-medium text-blue-600 transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-slate-100"
+      >
+        Sign in
+      </button>
+    </header>
+
+    <main class="flex flex-1 flex-col items-center justify-center px-4">
+      <div
+        class="flex w-full max-w-3xl flex-col items-center gap-8 text-center"
+      >
+        <h1
+          class="text-4xl font-semibold tracking-tight text-slate-900 sm:text-6xl"
+        >
+          Domain <span class="text-blue-600">Alert</span>
+        </h1>
+        <p class="text-base text-slate-600 sm:text-lg whitespace-nowrap">
+          Track availability, price changes, and expirations for domains you
+          care about.
+        </p>
+        <form
+          id="domain-search-form"
+          class="flex w-full flex-col items-center gap-4"
+          action="/api/whois"
+          method="get"
+          hx-get="/api/whois"
+          hx-target="#whois-results"
+          hx-swap="innerHTML"
+          hx-indicator="#whois-loading"
+          hx-on::beforeRequest="document.getElementById('whois-results').innerHTML='';"
+        >
+          <div
+            class="flex w-full items-center gap-3 rounded-full border border-slate-200 bg-white px-5 py-3 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100"
+          >
+            <svg
+              class="h-5 w-5 text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <circle cx="11" cy="11" r="7"></circle>
+              <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="search"
+              name="domain"
+              aria-label="Search domain"
+              placeholder="Search domains or enter a URL..."
+              class="flex-1 border-none bg-transparent text-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+              required
+            />
+            <button
+              type="submit"
+              class="hidden rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-white sm:inline"
+            >
+              Search
+            </button>
+          </div>
+        </form>
+        <section
+          class="flex w-full max-w-2xl flex-col items-stretch gap-4 text-left"
+          x-data="monitorModal()"
+          x-on:monitor-modal\:open.window="openModal($event.detail.domain)"
+          x-on:keydown.escape.window="closeModal()"
+        >
+          <div id="whois-results" class="" aria-live="polite"></div>
+          <div
+            id="whois-loading"
+            class="mt-2 flex items-center gap-2 text-sm text-slate-600"
+            role="status"
+            aria-live="polite"
+          >
+            <svg
+              class="h-4 w-4 animate-spin text-blue-600"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span>Fetching WHOIS details...</span>
+          </div>
+          <div
+            x-cloak
+            x-show="open"
+            x-transition.opacity
+            class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 px-4"
+            role="dialog"
+            aria-modal="true"
+            @click="closeModal"
+          >
+            <div
+              class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+              @click.stop
+            >
+              <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-slate-900">
+                  Monitor options
+                </h2>
+                <button
+                  type="button"
+                  class="rounded-full p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-white"
+                  @click="closeModal"
+                  aria-label="Close monitor options"
+                >
+                  <svg
+                    class="h-5 w-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M6 18L18 6M6 6l12 12"
+                    ></path>
+                  </svg>
+                </button>
+              </div>
+              <p class="mt-2 text-sm text-slate-600" x-text="modalSubtitle"></p>
+              <form class="mt-5 space-y-4" @submit.prevent="submit">
+                <label class="flex items-start gap-3 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    class="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    x-model="notifyChanges"
+                  />
+                  <span>Notify me of every change of this domain</span>
+                </label>
+                <label class="flex items-start gap-3 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    class="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    x-model="notifyExpiry"
+                  />
+                  <span>Let me know when it expires</span>
+                </label>
+                <div class="mt-6 flex items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    class="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-white"
+                    @click="closeModal"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    class="rounded-full bg-blue-600 px-6 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-white disabled:cursor-not-allowed disabled:bg-blue-400 disabled:opacity-80"
+                    :disabled="saving"
+                  >
+                    <span x-show="!saving" x-cloak>Save preferences</span>
+                    <span x-show="saving" x-cloak>Saving...</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="px-6 py-6 text-xs text-slate-500">
+      <div
+        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <span>© {year} Domain Alert</span>
+        <div class="flex items-center gap-4">
+          <a href="#" class="transition hover:text-slate-700">Privacy</a>
+          <a href="#" class="transition hover:text-slate-700">Terms</a>
+          <a href="#" class="transition hover:text-slate-700">About</a>
+        </div>
+      </div>
+    </footer>
+    <script is:inline>
+      (() => {
+        const VAPID_PUBLIC_KEY = ${JSON.stringify(vapidPublicKey)};
+        if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+          window.DomainAlertPush = null;
+          return;
+        }
+
+        const urlBase64ToUint8 = (base64String) => {
+          const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+          const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+          const raw = window.atob(base64);
+          const outputArray = new Uint8Array(raw.length);
+          for (let i = 0; i < raw.length; ++i) {
+            outputArray[i] = raw.charCodeAt(i);
+          }
+          return outputArray;
+        };
+
+        let registrationPromise = null;
+        const getRegistration = async () => {
+          if (!registrationPromise) {
+            registrationPromise = navigator.serviceWorker.register("/sw.js", { scope: "/" });
+          }
+          return registrationPromise;
+        };
+
+        window.DomainAlertPush = {
+          async subscribe() {
+            try {
+              const registration = await getRegistration();
+              if (!registration) return null;
+
+              if (!("Notification" in window)) {
+                throw new Error("Notifications are not supported in this browser.");
+              }
+
+              const permission = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
+              if (permission !== "granted") {
+                throw new Error("Notification permission was denied.");
+              }
+
+              const existingSubscription = await registration.pushManager.getSubscription();
+              if (existingSubscription) {
+                return existingSubscription.toJSON();
+              }
+
+              if (!VAPID_PUBLIC_KEY) {
+                throw new Error("Push notifications are not configured.");
+              }
+
+              const applicationServerKey = urlBase64ToUint8(VAPID_PUBLIC_KEY);
+              const subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey
+              });
+              return subscription.toJSON();
+            } catch (error) {
+              console.error("Push subscription failed:", error);
+              throw error;
+            }
+          }
+        };
+      })();
+    </script>
+    <script is:inline>
+      document.addEventListener("alpine:init", () => {
+        Alpine.data("monitorModal", () => ({
+          open: false,
+          domain: "",
+          notifyChanges: false,
+          notifyExpiry: false,
+          saving: false,
+          get modalSubtitle() {
+            if (!this.domain) {
+              return "Choose how you want to stay informed about this domain.";
+            }
+            return `Choose how you want to stay informed about ${this.domain}.`;
+          },
+          openModal(domain) {
+            this.domain = domain || "";
+            this.notifyChanges = false;
+            this.notifyExpiry = false;
+            this.open = true;
+          },
+          closeModal() {
+            this.open = false;
+          },
+          async submit() {
+            if (this.saving) return;
+            this.saving = true;
+            try {
+              const payload = {
+                domain: this.domain || null,
+                notifyChanges: this.notifyChanges,
+                notifyExpiry: this.notifyExpiry
+              };
+
+              const pushSupport = window.DomainAlertPush;
+              if (pushSupport) {
+                try {
+                  payload.subscription = await pushSupport.subscribe();
+                } catch (error) {
+                  console.warn("Push subscription unavailable:", error);
+                  payload.subscription = null;
+                }
+              }
+
+              if (!payload.subscription) {
+                throw new Error("Push notifications are not available on this device.");
+              }
+
+              await fetch("/api/subscriptions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+              });
+              this.closeModal();
+            } catch (error) {
+              console.error("Failed to save monitor preferences:", error);
+              alert(
+                error?.message ||
+                  "We couldn't enable notifications for this domain. Please check your browser settings and try again."
+              );
+            } finally {
+              this.saving = false;
+            }
+          }
+        }));
+      });
+    </script>
+  </body>
+</html>
