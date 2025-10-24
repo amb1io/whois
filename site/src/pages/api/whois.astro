@@ -52,7 +52,7 @@ const toDate = (value: unknown): Date | null => {
 
 const persistWhoisResult = async (domain: string, data: WhoisResponse) => {
   const db = Astro.locals.runtime?.env?.domain_monitor;
-  const prisma = getPrismaClient(db);
+  const prisma = await getPrismaClient(db);
 
   if (!prisma) {
     return;

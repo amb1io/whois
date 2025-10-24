@@ -12,7 +12,7 @@ const jsonResponse = (data: unknown, status = 200) =>
 export const prerender = false;
 
 export const POST: APIRoute = async ({ request, locals }) => {
-  const prisma = getPrismaClient(locals.runtime?.env?.domain_monitor);
+  const prisma = await getPrismaClient(locals.runtime?.env?.domain_monitor);
 
   if (!prisma) {
     return jsonResponse({ error: "Database is not available." }, 503);
@@ -70,7 +70,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 };
 
 export const DELETE: APIRoute = async ({ request, locals }) => {
-  const prisma = getPrismaClient(locals.runtime?.env?.domain_monitor);
+  const prisma = await getPrismaClient(locals.runtime?.env?.domain_monitor);
 
   if (!prisma) {
     return jsonResponse({ error: "Database is not available." }, 503);

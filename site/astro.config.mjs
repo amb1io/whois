@@ -42,7 +42,7 @@ export default defineConfig({
       },
     },
     ssr: {
-      noExternal: ["@prisma/client", ".prisma/client"],
+      noExternal: ["@prisma/client", ".prisma/client", ".prisma/client/edge"],
       resolve: {
         alias: {
           ".prisma/client/edge": prismaEdgePath,
