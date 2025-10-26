@@ -58,7 +58,9 @@ const persistWhoisResult = async (domain: string, data: WhoisResponse) => {
     return;
   }
 
-  const normalizeList = (value: unknown[] | null | undefined): string[] | null => {
+  const normalizeList = (
+    value: unknown[] | null | undefined
+  ): string[] | null => {
     if (!Array.isArray(value) || value.length === 0) return null;
     return value.map((item) => String(item)).sort((a, b) => a.localeCompare(b));
   };
@@ -73,7 +75,7 @@ const persistWhoisResult = async (domain: string, data: WhoisResponse) => {
     nameservers: normalizeList(data.nameservers ?? []),
     createdAt: toDate(data.ts?.created),
     updatedAt: toDate(data.ts?.updated),
-    expiresAt: toDate(data.ts?.expires)
+    expiresAt: toDate(data.ts?.expires),
   };
 
   const whereClause: Record<string, unknown> = {
@@ -84,7 +86,7 @@ const persistWhoisResult = async (domain: string, data: WhoisResponse) => {
     reseller: record.reseller,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
-    expiresAt: record.expiresAt
+    expiresAt: record.expiresAt,
   };
 
   if (record.statuses === null) {
@@ -101,7 +103,7 @@ const persistWhoisResult = async (domain: string, data: WhoisResponse) => {
 
   try {
     const existing = await prisma.domain.findFirst({
-      where: whereClause
+      where: whereClause,
     });
 
     if (existing) {
@@ -109,7 +111,7 @@ const persistWhoisResult = async (domain: string, data: WhoisResponse) => {
     }
 
     await prisma.domain.create({
-      data: record
+      data: record,
     });
   } catch (error) {
     console.error("Failed to persist WHOIS result:", error);
@@ -134,6 +136,7 @@ if (!domain) {
 } else {
   try {
     lookupResult = await whois(domain);
+    console.log("lookupResult", lookupResult);
     if (lookupResult) {
       await persistWhoisResult(domain, lookupResult);
     }
