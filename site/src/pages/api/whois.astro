@@ -19,14 +19,20 @@ const wantsJSON = acceptHeader.includes("application/json") && !isHxRequest;
 const domainParam = url.searchParams.get("domain");
 const domain = domainParam?.trim().toLowerCase() ?? "";
 
-const isPort43UnsupportedError = (value: unknown): boolean => {
-  return typeof value === "string" && value.toLowerCase().includes("net.socket");
-};
-
 const sanitizeString = (value: unknown): string | null => {
   if (value === null || value === undefined) return null;
   const str = String(value).trim();
   return str === "" ? null : str;
+};
+
+const proxyBaseUrl = sanitizeString(
+  ((Astro as unknown as { env?: Record<string, string | undefined> })?.env
+    ?.WHOIS_PROXY_URL ??
+    import.meta.env.WHOIS_PROXY_URL) as string | undefined
+);
+
+const isPort43UnsupportedError = (value: unknown): boolean => {
+  return typeof value === "string" && value.toLowerCase().includes("net.socket");
 };
 
 const extractVCardValue = (vcardArray: any, keys: string[]): string | null => {
@@ -156,6 +162,34 @@ const rdapFallbackHosts = (domain: string, whoisServer?: string | null) => {
   return Array.from(hosts);
 };
 
+const fetchProxyWhois = async (domain: string): Promise<WhoisResponse | null> => {
+  if (!proxyBaseUrl) return null;
+
+  try {
+    const proxyUrl = new URL(proxyBaseUrl);
+    proxyUrl.searchParams.set("domain", domain);
+
+    const res = await fetch(proxyUrl.toString(), {
+      headers: {
+        accept: "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      console.warn(
+        `WHOIS proxy returned ${res.status} ${res.statusText} for ${domain}`
+      );
+      return null;
+    }
+
+    const result = (await res.json()) as WhoisResponse;
+    return result;
+  } catch (error) {
+    console.warn("WHOIS proxy request failed:", error);
+    return null;
+  }
+};
+
 const fetchRdapFallback = async (domain: string, whoisServer?: string | null) => {
   for (const url of rdapFallbackHosts(domain, whoisServer)) {
     try {
@@ -185,6 +219,9 @@ const performWhoisLookup = async (domain: string): Promise<WhoisResponse | null>
     const result = await whois(domain);
 
     if (result?.error && isPort43UnsupportedError(result.error)) {
+      const proxyResult = await fetchProxyWhois(domain);
+      if (proxyResult) return proxyResult;
+
       const fallback = await fetchRdapFallback(domain, result.server ?? null);
       return fallback ?? result;
     }
@@ -192,6 +229,9 @@ const performWhoisLookup = async (domain: string): Promise<WhoisResponse | null>
     return result;
   } catch (error: any) {
     if (error && isPort43UnsupportedError(error.message ?? "")) {
+      const proxyResult = await fetchProxyWhois(domain);
+      if (proxyResult) return proxyResult;
+
       const fallback = await fetchRdapFallback(domain, null);
       if (fallback) {
         return fallback;
@@ -420,4 +460,3 @@ const rows =
     </div>
   ) : null
 }
-
