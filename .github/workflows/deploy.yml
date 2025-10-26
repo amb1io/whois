@@ -8,7 +8,11 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    
+
+    defaults:
+      run:
+        working-directory: site-proxy-whois
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -16,13 +20,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install dependencies
         run: npm ci
 
       - name: Create deployment package
-        run: zip -r lambda-deployment.zip index.js package.json node_modules/
+        run: zip -r lambda-deployment.zip index.js package.json package-lock.json node_modules/
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
