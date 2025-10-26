@@ -35,12 +35,12 @@ export default defineConfig({
         ignored: ["**/.wrangler/**", "**/prisma/dev.db*"],
       },
     },
-    // resolve: {
-    //   alias: {
-    //     "dns/promises": dnsPolyfillPath,
-    //     net: netPolyfillPath,
-    //   },
-    // },
+    resolve: {
+      alias: {
+        // "dns/promises": dnsPolyfillPath,
+        net: netPolyfillPath,
+      },
+    },
     // ssr: {
     //   noExternal: ["@prisma/client", ".prisma/client", ".prisma/client/edge"],
     //   resolve: {
