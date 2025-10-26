@@ -1,0 +1,11 @@
+{
+  "name": "site-proxy-whois",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "@cleandns/whois-rdap": "^1.0.52"
+  }
+}
