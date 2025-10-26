@@ -29,3 +29,4 @@ app/.env*
 *.njsproj
 *.sln
 *.sw?
+.dev.vars
