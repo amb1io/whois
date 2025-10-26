@@ -1,5 +1,4 @@
 ---
-import { whois } from "@cleandns/whois-rdap";
 import { getPrismaClient } from "../../lib/prisma";
 
 export const prerender = false;
@@ -33,6 +32,31 @@ const proxyBaseUrl = sanitizeString(
 
 const isPort43UnsupportedError = (value: unknown): boolean => {
   return typeof value === "string" && value.toLowerCase().includes("net.socket");
+};
+
+type WhoisTimestamp = {
+  created: Date | string | null;
+  updated: Date | string | null;
+  expires: Date | string | null;
+};
+
+type WhoisRegistrar = {
+  id: string | number | null;
+  name: string | null;
+  email?: string | null;
+};
+
+type WhoisResponse = {
+  found: boolean;
+  statusCode: number;
+  error: string;
+  registrar: WhoisRegistrar;
+  reseller: string | null;
+  status: string[];
+  statusDelta?: unknown;
+  nameservers: string[];
+  ts: WhoisTimestamp;
+  server?: string | null;
 };
 
 const extractVCardValue = (vcardArray: any, keys: string[]): string | null => {
@@ -89,8 +113,6 @@ const buildRegistrarFromEntity = (entity: any) => {
     email,
   };
 };
-
-type WhoisResponse = Awaited<ReturnType<typeof whois>>;
 
 const parseRdapResponse = (data: any): WhoisResponse | null => {
   if (!data || typeof data !== "object") return null;
@@ -215,31 +237,18 @@ const fetchRdapFallback = async (domain: string, whoisServer?: string | null) =>
 };
 
 const performWhoisLookup = async (domain: string): Promise<WhoisResponse | null> => {
-  try {
-    const result = await whois(domain);
+  const proxyResult = await fetchProxyWhois(domain);
 
-    if (result?.error && isPort43UnsupportedError(result.error)) {
-      const proxyResult = await fetchProxyWhois(domain);
-      if (proxyResult) return proxyResult;
-
-      const fallback = await fetchRdapFallback(domain, result.server ?? null);
-      return fallback ?? result;
+  if (proxyResult) {
+    if (proxyResult.error && isPort43UnsupportedError(proxyResult.error)) {
+      const fallback = await fetchRdapFallback(domain, proxyResult.server ?? null);
+      return fallback ?? proxyResult;
     }
 
-    return result;
-  } catch (error: any) {
-    if (error && isPort43UnsupportedError(error.message ?? "")) {
-      const proxyResult = await fetchProxyWhois(domain);
-      if (proxyResult) return proxyResult;
-
-      const fallback = await fetchRdapFallback(domain, null);
-      if (fallback) {
-        return fallback;
-      }
-    }
-
-    throw error;
+    return proxyResult;
   }
+
+  return fetchRdapFallback(domain, null);
 };
 
 const formatValue = (value: unknown): string => {
