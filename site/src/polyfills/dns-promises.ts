@@ -28,4 +28,7 @@ const fetchDnsRecords: Resolve4 = async (hostname) => {
   }
 };
 
-export const resolve4: Resolve4 = fetchDnsRecords;
+export const resolve4: Resolve4 = async (hostname) => {
+  const addresses = await fetchDnsRecords(hostname);
+  return addresses.length > 0 ? addresses : [hostname];
+};

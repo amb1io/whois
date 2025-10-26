@@ -41,13 +41,13 @@ export default defineConfig({
         net: netPolyfillPath,
       },
     },
-    ssr: {
-      noExternal: ["@prisma/client", ".prisma/client", ".prisma/client/edge"],
-      resolve: {
-        alias: {
-          ".prisma/client/edge": prismaEdgePath,
-        },
-      },
-    },
+    // ssr: {
+    //   noExternal: ["@prisma/client", ".prisma/client", ".prisma/client/edge"],
+    //   resolve: {
+    //     alias: {
+    //       ".prisma/client/edge": prismaEdgePath,
+    //     },
+    //   },
+    // },
   },
 });
