@@ -37,7 +37,7 @@ export default defineConfig({
     },
     resolve: {
       alias: {
-        // "dns/promises": dnsPolyfillPath,
+        "dns/promises": dnsPolyfillPath,
         net: netPolyfillPath,
       },
     },
