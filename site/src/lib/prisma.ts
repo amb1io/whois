@@ -7,12 +7,12 @@ const LOCAL_CACHE = Symbol.for("domain-alert.prisma.local");
 
 type PrismaCache = WeakMap<object, PrismaClientType>;
 
-let prismaModulePromise: Promise<typeof import("@prisma/client")> | null = null;
+type PrismaModule = { PrismaClient: { new (...args: any[]): PrismaClientType } };
 
-const loadPrismaClient = async () => {
-  if (!prismaModulePromise) {
-    prismaModulePromise = import("@prisma/client");
-  }
+let prismaModulePromise: Promise<PrismaModule> | null = null;
+
+const loadPrismaClient = async (): Promise<PrismaModule> => {
+  prismaModulePromise ??= import("@prisma/client") as Promise<PrismaModule>;
   return prismaModulePromise;
 };
 

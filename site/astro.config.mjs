@@ -4,6 +4,8 @@ import cloudflare from "@astrojs/cloudflare";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 
+const basePath = process.env.ASTRO_BASE_PATH ?? "/";
+
 const dnsPolyfillPath = fileURLToPath(
   new URL("./src/polyfills/dns-promises.ts", import.meta.url)
 );
@@ -13,10 +15,14 @@ const netPolyfillPath = fileURLToPath(
 const prismaEdgePath = fileURLToPath(
   new URL("./node_modules/.prisma/client/edge.js", import.meta.url)
 );
+const prismaDefaultPath = fileURLToPath(
+  new URL("./node_modules/.prisma/client/default.js", import.meta.url)
+);
 
 // https://astro.build/config
 export default defineConfig({
   output: "server",
+  base: basePath,
   adapter: cloudflare({
     mode: "pages",
     platformProxy: {
@@ -39,15 +45,24 @@ export default defineConfig({
       alias: {
         "dns/promises": dnsPolyfillPath,
         net: netPolyfillPath,
+        ".prisma/client/edge": prismaEdgePath,
+        ".prisma/client/default": prismaDefaultPath,
       },
     },
-    // ssr: {
-    //   noExternal: ["@prisma/client", ".prisma/client", ".prisma/client/edge"],
-    //   resolve: {
-    //     alias: {
-    //       ".prisma/client/edge": prismaEdgePath,
-    //     },
-    //   },
-    // },
+    ssr: {
+      noExternal: [
+        "@prisma/client",
+        "@prisma/client/edge",
+        ".prisma/client",
+        ".prisma/client/default",
+        ".prisma/client/edge",
+      ],
+      resolve: {
+        alias: {
+          ".prisma/client/edge": prismaEdgePath,
+          ".prisma/client/default": prismaDefaultPath,
+        },
+      },
+    },
   },
 });
