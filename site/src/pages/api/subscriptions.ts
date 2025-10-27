@@ -11,6 +11,12 @@ const jsonResponse = (data: unknown, status = 200) =>
 
 export const prerender = false;
 
+if (typeof globalThis.exports === "undefined") {
+  const cjsModule = { exports: {} };
+  (globalThis as typeof globalThis & { exports: unknown; module: unknown }).exports = cjsModule.exports;
+  (globalThis as typeof globalThis & { module: unknown }).module = cjsModule;
+}
+
 export const POST: APIRoute = async ({ request, locals }) => {
   const prisma = await getPrismaClient(locals.runtime?.env?.domain_monitor);
 
@@ -29,38 +35,94 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const notifyChanges = Boolean(payload?.notifyChanges);
   const notifyExpiry = Boolean(payload?.notifyExpiry);
   const subscription = payload?.subscription ?? null;
+  const emailRaw = typeof payload?.email === "string" ? payload.email.trim().toLowerCase() : null;
+
+  const requiresNotification = notifyChanges || notifyExpiry;
+
+  if (!requiresNotification) {
+    return jsonResponse({ error: "Select at least one notification option." }, 400);
+  }
 
   if (!domain) {
     return jsonResponse({ error: "Domain is required." }, 400);
   }
 
-  if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
-    return jsonResponse({ error: "Push subscription details are incomplete." }, 400);
+  if (emailRaw) {
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailPattern.test(emailRaw)) {
+      return jsonResponse({ error: "Invalid email address." }, 400);
+    }
+  }
+
+  const hasSubscription = Boolean(
+    subscription?.endpoint &&
+      subscription?.keys?.p256dh &&
+      subscription?.keys?.auth
+  );
+
+  if (!hasSubscription && !emailRaw) {
+    return jsonResponse({
+      error: "Provide a valid email address or enable push notifications to receive alerts."
+    }, 400);
   }
 
   try {
-    await prisma.subscription.upsert({
-      where: {
-        endpoint_domain: {
+    if (hasSubscription && subscription) {
+      await prisma.subscription.upsert({
+        where: {
+          endpoint_domain: {
+            endpoint: String(subscription.endpoint),
+            domain
+          }
+        },
+        update: {
+          auth: String(subscription.keys.auth),
+          p256dh: String(subscription.keys.p256dh),
+          notifyChanges,
+          notifyExpiry
+        },
+        create: {
           endpoint: String(subscription.endpoint),
-          domain
+          auth: String(subscription.keys.auth),
+          p256dh: String(subscription.keys.p256dh),
+          domain,
+          notifyChanges,
+          notifyExpiry
         }
-      },
-      update: {
-        auth: String(subscription.keys.auth),
-        p256dh: String(subscription.keys.p256dh),
-        notifyChanges,
-        notifyExpiry
-      },
-      create: {
-        endpoint: String(subscription.endpoint),
-        auth: String(subscription.keys.auth),
-        p256dh: String(subscription.keys.p256dh),
-        domain,
-        notifyChanges,
-        notifyExpiry
+      });
+    }
+
+    if (emailRaw) {
+      const user = await prisma.user.upsert({
+        where: { email: emailRaw },
+        update: {},
+        create: { email: emailRaw }
+      });
+
+      let domainRecord = await prisma.domain.findFirst({
+        where: { domain }
+      });
+
+      if (!domainRecord) {
+        domainRecord = await prisma.domain.create({
+          data: { domain }
+        });
       }
-    });
+
+      await prisma.userDomainToNotify.upsert({
+        where: {
+          domainId_userId: {
+            domainId: domainRecord.id,
+            userId: user.id
+          }
+        },
+        update: {},
+        create: {
+          domainId: domainRecord.id,
+          userId: user.id
+        }
+      });
+    }
 
     return jsonResponse({ ok: true });
   } catch (error) {

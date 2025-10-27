@@ -33,8 +33,6 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
     <header
       class="flex items-center justify-end gap-6 px-6 py-4 text-sm text-slate-600"
     >
-      <a href="#" class="transition hover:text-slate-900">Pricing</a>
-      <a href="#" class="transition hover:text-slate-900">Support</a>
       <div class="relative" x-data="{ open: false }">
         <button
           type="button"
@@ -96,11 +94,6 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
           </ul>
         </div>
       </div>
-      <button
-        class="rounded-full border border-blue-600 px-4 py-1.5 font-medium text-blue-600 transition hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-slate-100"
-      >
-        Sign in
-      </button>
     </header>
 
     <main class="flex flex-1 flex-col items-center justify-center px-4">
@@ -247,6 +240,35 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
                   />
                   <span>Let me know when it expires</span>
                 </label>
+                <div
+                  x-show="showEmailField"
+                  x-transition.opacity
+                  class="space-y-2 rounded-lg border border-blue-100 bg-blue-50/60 px-4 py-3"
+                  x-cloak
+                >
+                  <label
+                    for="monitor-email"
+                    class="block text-sm font-medium text-slate-700"
+                  >
+                    Inform your email address
+                  </label>
+                  <input
+                    id="monitor-email"
+                    type="email"
+                    x-model.trim="email"
+                    :required="showEmailField"
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    placeholder="you@example.com"
+                    autocomplete="email"
+                  />
+                  <p
+                    class="text-sm text-red-600"
+                    x-show="emailError"
+                    x-text="emailError"
+                    x-cloak
+                  >
+                  </p>
+                </div>
                 <div class="mt-6 flex items-center justify-end gap-3">
                   <button
                     type="button"
@@ -283,7 +305,7 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
         </div>
       </div>
     </footer>
-    <script is:inline>
+    <script is:inline define:vars={{ subscriptionsApiPath }}>
       (() => {
         // const VAPID_PUBLIC_KEY = ${JSON.stringify(vapidPublicKey)};
         const VAPID_PUBLIC_KEY = null;
@@ -359,26 +381,46 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
         };
       })();
     </script>
-    <script is:inline>
-      // const SUBSCRIPTIONS_API_PATH = {JSON.stringify(subscriptionsApiPath)};
-      const SUBSCRIPTIONS_API_PATH = "";
+    <script is:inline define:vars={{ subscriptionsApiPath }}>
+      const SUBSCRIPTIONS_API_PATH = subscriptionsApiPath;
       document.addEventListener("alpine:init", () => {
         Alpine.data("monitorModal", () => ({
           open: false,
           domain: "",
           notifyChanges: false,
           notifyExpiry: false,
+          email: "",
+          emailError: "",
           saving: false,
+          init() {
+            this.$watch("notifyChanges", () => {
+              if (!this.showEmailField) {
+                this.email = "";
+                this.emailError = "";
+              }
+            });
+            this.$watch("notifyExpiry", () => {
+              if (!this.showEmailField) {
+                this.email = "";
+                this.emailError = "";
+              }
+            });
+          },
           get modalSubtitle() {
             if (!this.domain) {
               return "Choose how you want to stay informed about this domain.";
             }
             return `Choose how you want to stay informed about ${this.domain}.`;
           },
+          get showEmailField() {
+            return this.notifyChanges || this.notifyExpiry;
+          },
           openModal(domain) {
             this.domain = domain || "";
             this.notifyChanges = false;
             this.notifyExpiry = false;
+            this.email = "";
+            this.emailError = "";
             this.open = true;
           },
           closeModal() {
@@ -388,33 +430,61 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
             if (this.saving) return;
             this.saving = true;
             try {
+              if (!this.notifyChanges && !this.notifyExpiry) {
+                throw new Error(
+                  "Select at least one notification preference before saving."
+                );
+              }
+
               const payload = {
                 domain: this.domain || null,
                 notifyChanges: this.notifyChanges,
                 notifyExpiry: this.notifyExpiry,
               };
 
+              const trimmedEmail = this.email.trim();
+              if (this.showEmailField) {
+                if (!trimmedEmail) {
+                  this.emailError = "Email address is required.";
+                  this.saving = false;
+                  return;
+                }
+
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailPattern.test(trimmedEmail)) {
+                  this.emailError = "Please enter a valid email address.";
+                  this.saving = false;
+                  return;
+                }
+
+                payload.email = trimmedEmail;
+                this.emailError = "";
+              } else {
+                payload.email = null;
+              }
+
               const pushSupport = window.DomainAlertPush;
+              let subscriptionPayload = null;
               if (pushSupport) {
                 try {
-                  payload.subscription = await pushSupport.subscribe();
+                  subscriptionPayload = await pushSupport.subscribe();
                 } catch (error) {
                   console.warn("Push subscription unavailable:", error);
-                  payload.subscription = null;
+                  subscriptionPayload = null;
                 }
               }
-
-              if (!payload.subscription) {
-                throw new Error(
-                  "Push notifications are not available on this device."
-                );
-              }
-
-              await fetch(SUBSCRIPTIONS_API_PATH, {
+              payload.subscription = subscriptionPayload;
+              const response = await fetch(SUBSCRIPTIONS_API_PATH, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload),
               });
+              if (!response.ok) {
+                const result = await response.json().catch(() => ({}));
+                const errorMessage =
+                  result?.error ?? "Unable to save preferences.";
+                throw new Error(errorMessage);
+              }
               this.closeModal();
             } catch (error) {
               console.error("Failed to save monitor preferences:", error);

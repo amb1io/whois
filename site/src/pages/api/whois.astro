@@ -8,6 +8,14 @@ const jsonHeaders = {
   "Cache-Control": "no-store",
 } as const;
 
+if (typeof globalThis.exports === "undefined") {
+  const cjsModule = { exports: {} };
+  (
+    globalThis as typeof globalThis & { exports: unknown; module: unknown }
+  ).exports = cjsModule.exports;
+  (globalThis as typeof globalThis & { module: unknown }).module = cjsModule;
+}
+
 const { request, url, response } = Astro;
 response.headers.set("Cache-Control", "no-store");
 
@@ -24,13 +32,15 @@ const sanitizeString = (value: unknown): string | null => {
   return str === "" ? null : str;
 };
 
-const localsRuntimeEnv =
-  (Astro.locals as unknown as {
+const localsRuntimeEnv = (
+  Astro.locals as unknown as {
     runtime?: { env?: Record<string, string | undefined> };
-  })?.runtime?.env;
+  }
+)?.runtime?.env;
 
-const astroRuntimeEnv =
-  (Astro as unknown as { env?: Record<string, string | undefined> })?.env;
+const astroRuntimeEnv = (
+  Astro as unknown as { env?: Record<string, string | undefined> }
+)?.env;
 
 const runtimeEnv = {
   ...(astroRuntimeEnv ?? {}),
@@ -38,8 +48,9 @@ const runtimeEnv = {
 };
 
 const proxyBaseUrl = sanitizeString(
-  (runtimeEnv.WHOIS_PROXY_URL ??
-    import.meta.env.WHOIS_PROXY_URL) as string | undefined
+  (runtimeEnv.WHOIS_PROXY_URL ?? import.meta.env.WHOIS_PROXY_URL) as
+    | string
+    | undefined
 );
 console.log("[WHOIS] Runtime env keys:", Object.keys(runtimeEnv));
 console.log("[WHOIS] Runtime WHOIS_PROXY_URL:", runtimeEnv.WHOIS_PROXY_URL);
@@ -93,7 +104,6 @@ const fetchProxyWhois = async (
     }
 
     const result = (await res.json()) as WhoisResponse;
-    console.log("result", result);
     return result;
   } catch (error) {
     console.warn("WHOIS proxy request failed:", error);
@@ -235,7 +245,6 @@ if (!domain) {
 } else {
   try {
     lookupResult = await performWhoisLookup(domain);
-    console.log(lookupResult, !lookupResult);
     if (!lookupResult) {
       console.log("passo1");
       errorMessage = "Unable to complete WHOIS lookup. Please try again later.";

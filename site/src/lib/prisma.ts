@@ -12,7 +12,7 @@ type PrismaModule = { PrismaClient: { new (...args: any[]): PrismaClientType } }
 let prismaModulePromise: Promise<PrismaModule> | null = null;
 
 const loadPrismaClient = async (): Promise<PrismaModule> => {
-  prismaModulePromise ??= import("@prisma/client") as Promise<PrismaModule>;
+  prismaModulePromise ??= import("@prisma/client/default-esm.js") as Promise<PrismaModule>;
   return prismaModulePromise;
 };
 
