@@ -5,6 +5,8 @@ compatibility_date = "2024-09-23"
 
 [vars]
   WHOIS_PROXY_URL = "https://n4lulr10x3.execute-api.sa-east-1.amazonaws.com"
+  DATABASE_URL = "file:./prisma/dev.db"
+  ASTRO_BASE_PATH = "/whois"
 
 [[d1_databases]]
 binding = "domain_monitor"
