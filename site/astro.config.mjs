@@ -15,6 +15,9 @@ const netPolyfillPath = fileURLToPath(
 const prismaDefaultEsmPath = fileURLToPath(
   new URL("./src/lib/prisma-client-default.ts", import.meta.url)
 );
+const prismaDefaultPath = fileURLToPath(
+  new URL("./node_modules/.prisma/client/default.js", import.meta.url)
+);
 
 // https://astro.build/config
 export default defineConfig({
