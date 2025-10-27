@@ -12,8 +12,8 @@ const dnsPolyfillPath = fileURLToPath(
 const netPolyfillPath = fileURLToPath(
   new URL("./src/polyfills/net.ts", import.meta.url)
 );
-const prismaEdgePath = fileURLToPath(
-  new URL("./node_modules/.prisma/client/edge.js", import.meta.url)
+const prismaDefaultEsmPath = fileURLToPath(
+  new URL("./src/lib/prisma-client-default.ts", import.meta.url)
 );
 const prismaDefaultPath = fileURLToPath(
   new URL("./node_modules/.prisma/client/default.js", import.meta.url)
@@ -45,24 +45,15 @@ export default defineConfig({
       alias: {
         "dns/promises": dnsPolyfillPath,
         net: netPolyfillPath,
-        ".prisma/client/edge": prismaEdgePath,
-        ".prisma/client/default": prismaDefaultPath,
+        ".prisma/client/default": prismaDefaultEsmPath,
       },
     },
     ssr: {
       noExternal: [
         "@prisma/client",
-        "@prisma/client/edge",
         ".prisma/client",
         ".prisma/client/default",
-        ".prisma/client/edge",
       ],
-      resolve: {
-        alias: {
-          ".prisma/client/edge": prismaEdgePath,
-          ".prisma/client/default": prismaDefaultPath,
-        },
-      },
     },
   },
 });
