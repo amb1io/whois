@@ -305,7 +305,7 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
         </div>
       </div>
     </footer>
-    <script is:inline>
+    <script is:inline define:vars={{ subscriptionsApiPath }}>
       (() => {
         // const VAPID_PUBLIC_KEY = ${JSON.stringify(vapidPublicKey)};
         const VAPID_PUBLIC_KEY = null;
@@ -381,7 +381,8 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
         };
       })();
     </script>
-    <script is:inline>
+    <script is:inline define:vars={{ subscriptionsApiPath }}>
+      const SUBSCRIPTIONS_API_PATH = subscriptionsApiPath;
       document.addEventListener("alpine:init", () => {
         Alpine.data("monitorModal", () => ({
           open: false,
@@ -472,10 +473,7 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
                   subscriptionPayload = null;
                 }
               }
-
               payload.subscription = subscriptionPayload;
-
-              const SUBSCRIPTIONS_API_PATH = subscriptionsApiPath;
               const response = await fetch(SUBSCRIPTIONS_API_PATH, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
