@@ -13,6 +13,9 @@ const netPolyfillPath = fileURLToPath(
 const prismaEdgePath = fileURLToPath(
   new URL("./node_modules/.prisma/client/edge.js", import.meta.url)
 );
+const prismaDefaultPath = fileURLToPath(
+  new URL("./node_modules/.prisma/client/default.js", import.meta.url)
+);
 
 // https://astro.build/config
 export default defineConfig({
@@ -39,15 +42,24 @@ export default defineConfig({
       alias: {
         "dns/promises": dnsPolyfillPath,
         net: netPolyfillPath,
+        ".prisma/client/edge": prismaEdgePath,
+        ".prisma/client/default": prismaDefaultPath,
       },
     },
-    // ssr: {
-    //   noExternal: ["@prisma/client", ".prisma/client", ".prisma/client/edge"],
-    //   resolve: {
-    //     alias: {
-    //       ".prisma/client/edge": prismaEdgePath,
-    //     },
-    //   },
-    // },
+    ssr: {
+      noExternal: [
+        "@prisma/client",
+        "@prisma/client/edge",
+        ".prisma/client",
+        ".prisma/client/default",
+        ".prisma/client/edge",
+      ],
+      resolve: {
+        alias: {
+          ".prisma/client/edge": prismaEdgePath,
+          ".prisma/client/default": prismaDefaultPath,
+        },
+      },
+    },
   },
 });
