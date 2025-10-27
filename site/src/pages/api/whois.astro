@@ -8,6 +8,12 @@ const jsonHeaders = {
   "Cache-Control": "no-store",
 } as const;
 
+if (typeof globalThis.exports === "undefined") {
+  const cjsModule = { exports: {} };
+  (globalThis as typeof globalThis & { exports: unknown; module: unknown }).exports = cjsModule.exports;
+  (globalThis as typeof globalThis & { module: unknown }).module = cjsModule;
+}
+
 const { request, url, response } = Astro;
 response.headers.set("Cache-Control", "no-store");
 
