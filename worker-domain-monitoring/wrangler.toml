@@ -14,4 +14,5 @@ database_name = "domain-monitor"
 database_id = "8b21eb9b-08fb-47e5-889c-cd2a68181e0b"
 migrations_dir = "migrations"
 
-triggers = { crons = ["0 6 * * *"] }
+[triggers]
+crons = ["0 6 * * *"]
