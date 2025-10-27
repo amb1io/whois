@@ -12,7 +12,10 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
   <head>
     <meta charset="utf-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,user-scalable=yes"
+    />
     <meta name="generator" content={Astro.generator} />
     <title>Domain Alert</title>
     <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
@@ -105,7 +108,7 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
         >
           Domain <span class="text-blue-600">Alert</span>
         </h1>
-        <p class="text-base text-slate-600 sm:text-lg whitespace-nowrap">
+        <p class="text-base text-slate-600 sm:text-lg">
           Track availability, price changes, and expirations for domains you
           care about.
         </p>
@@ -294,9 +297,7 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
     </main>
 
     <footer class="px-6 py-6 text-xs text-slate-500">
-      <div
-        class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-      >
+      <div class="flex flex-row gap-3 items-center justify-between">
         <span>© {year} Domain Alert</span>
         <div class="flex items-center gap-4">
           <a href="#" class="transition hover:text-slate-700">Privacy</a>
