@@ -8,7 +8,9 @@
     "preview": "astro preview",
     "astro": "astro",
     "prisma:generate": "prisma generate && node ./scripts/create-prisma-esm.mjs",
+    "prisma:sync-d1": "node ./scripts/sync-d1-migration.mjs",
     "prisma:migrate": "prisma migrate dev",
+    "d1:sync-local": "bash ../sync-d1.sh",
     "prisma:deploy": "prisma migrate deploy"
   },
   "dependencies": {
