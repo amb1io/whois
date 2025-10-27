@@ -1,5 +1,4 @@
 ---
-import { whois } from "@cleandns/whois-rdap";
 import { getPrismaClient } from "../../lib/prisma";
 
 export const prerender = false;
@@ -19,186 +18,76 @@ const wantsJSON = acceptHeader.includes("application/json") && !isHxRequest;
 const domainParam = url.searchParams.get("domain");
 const domain = domainParam?.trim().toLowerCase() ?? "";
 
-const isPort43UnsupportedError = (value: unknown): boolean => {
-  return typeof value === "string" && value.toLowerCase().includes("net.socket");
-};
-
 const sanitizeString = (value: unknown): string | null => {
   if (value === null || value === undefined) return null;
   const str = String(value).trim();
   return str === "" ? null : str;
 };
 
-const extractVCardValue = (vcardArray: any, keys: string[]): string | null => {
-  const entries: any[] = Array.isArray(vcardArray?.[1]) ? vcardArray[1] : [];
-  for (const entry of entries) {
-    if (!Array.isArray(entry) || typeof entry[0] !== "string") continue;
-    if (keys.includes(entry[0])) {
-      const value = Array.isArray(entry[3]) ? entry[3][0] : entry[3];
-      return sanitizeString(value);
-    }
-  }
-  return null;
+const proxyBaseUrl = sanitizeString(
+  ((Astro as unknown as { env?: Record<string, string | undefined> })?.env
+    ?.WHOIS_PROXY_URL ?? import.meta.env.WHOIS_PROXY_URL) as string | undefined
+);
+
+const runtimeEnv =
+  (Astro as unknown as { env?: Record<string, string | undefined> })?.env ?? {};
+console.log("[WHOIS] Runtime env keys:", Object.keys(runtimeEnv));
+console.log("[WHOIS] Runtime WHOIS_PROXY_URL:", runtimeEnv.WHOIS_PROXY_URL);
+console.log("[WHOIS] Build WHOIS_PROXY_URL:", import.meta.env.WHOIS_PROXY_URL);
+
+type WhoisTimestamp = {
+  created: Date | string | null;
+  updated: Date | string | null;
+  expires: Date | string | null;
 };
 
-const parseRdapEvents = (events: any[] | undefined) => {
-  const findDate = (action: string): Date | null => {
-    const match = events?.find((event) => event?.eventAction === action);
-    if (!match?.eventDate) return null;
-    const dt = new Date(match.eventDate);
-    return Number.isNaN(dt.valueOf()) ? null : dt;
-  };
-
-  return {
-    created: findDate("registration") ?? findDate("create"),
-    updated:
-      findDate("last changed") ??
-      findDate("last update of RDAP database") ??
-      findDate("update"),
-    expires: findDate("expiration") ?? findDate("expiry") ?? findDate("expire"),
-  };
+type WhoisRegistrar = {
+  id: string | number | null;
+  name: string | null;
+  email?: string | null;
 };
 
-const buildRegistrarFromEntity = (entity: any) => {
-  if (!entity) {
-    return { id: 0, name: null as string | null, email: null as string | null };
-  }
-
-  const publicIds: any[] = Array.isArray(entity.publicIds)
-    ? entity.publicIds
-    : entity.publicIDs ?? [];
-  const registrarId =
-    publicIds
-      ?.map((item) => item?.identifier ?? item?.Identifier)
-      ?.find((item) => typeof item === "string" && item.trim().length > 0) ?? null;
-
-  const name =
-    extractVCardValue(entity.vcardArray, ["fn", "org"]) ??
-    sanitizeString(entity.handle);
-  const email = extractVCardValue(entity.vcardArray, ["email"]);
-
-  return {
-    id: registrarId ? String(registrarId) : 0,
-    name,
-    email,
-  };
+type WhoisResponse = {
+  found: boolean;
+  statusCode: number;
+  error: string;
+  registrar: WhoisRegistrar;
+  reseller: string | null;
+  status: string[];
+  statusDelta?: unknown;
+  nameservers: string[];
+  ts: WhoisTimestamp;
+  server?: string | null;
 };
 
-type WhoisResponse = Awaited<ReturnType<typeof whois>>;
+const fetchProxyWhois = async (
+  domain: string
+): Promise<WhoisResponse | null> => {
+  if (!proxyBaseUrl) return null;
 
-const parseRdapResponse = (data: any): WhoisResponse | null => {
-  if (!data || typeof data !== "object") return null;
-
-  const entities: any[] = Array.isArray(data.entities) ? data.entities : [];
-  const registrarEntity = entities.find(
-    (entity) => Array.isArray(entity?.roles) && entity.roles.includes("registrar")
-  );
-  const resellerEntity = entities.find(
-    (entity) => Array.isArray(entity?.roles) && entity.roles.includes("reseller")
-  );
-
-  const registrar = buildRegistrarFromEntity(registrarEntity);
-  const reseller =
-    extractVCardValue(resellerEntity?.vcardArray, ["fn", "org"]) ??
-    sanitizeString(resellerEntity?.handle);
-
-  const statuses = Array.isArray(data.status)
-    ? data.status.map((status: unknown) => String(status).toLowerCase())
-    : [];
-
-  const nameservers = Array.isArray(data.nameservers)
-    ? data.nameservers
-        .map((ns: any) => sanitizeString(ns?.ldhName ?? ns?.handle))
-        .filter((value): value is string => Boolean(value))
-    : [];
-
-  const timestamps = parseRdapEvents(
-    Array.isArray(data.events) ? data.events : []
-  );
-
-  return {
-    found: true,
-    statusCode: 200,
-    error: "",
-    registrar,
-    reseller,
-    status: statuses,
-    statusDelta: [],
-    nameservers,
-    ts: timestamps,
-    server: sanitizeString(data.port43) ?? null,
-  };
-};
-
-const rdapFallbackHosts = (domain: string, whoisServer?: string | null) => {
-  const hosts = new Set<string>();
-
-  if (whoisServer && whoisServer.startsWith("whois.")) {
-    const stripped = whoisServer.replace(/^whois\./, "");
-    hosts.add(
-      `https://rdap.${stripped}/domain/${encodeURIComponent(domain)}`
-    );
-    hosts.add(
-      `https://${whoisServer.replace(
-        /^whois\./,
-        "rdap."
-      )}/domain/${encodeURIComponent(domain)}`
-    );
-  }
-
-  const tld = domain.split(".").pop();
-  if (tld) {
-    hosts.add(`https://rdap.${tld}/domain/${encodeURIComponent(domain)}`);
-  }
-
-  hosts.add(`https://rdap.org/domain/${encodeURIComponent(domain)}`);
-
-  return Array.from(hosts);
-};
-
-const fetchRdapFallback = async (domain: string, whoisServer?: string | null) => {
-  for (const url of rdapFallbackHosts(domain, whoisServer)) {
-    try {
-      const res = await fetch(url, {
-        headers: {
-          accept: "application/rdap+json, application/json;q=0.8, */*;q=0.5",
-        },
-      });
-
-      if (!res.ok) continue;
-
-      const data = await res.json();
-      const parsed = parseRdapResponse(data);
-      if (parsed) {
-        return parsed;
-      }
-    } catch (error) {
-      console.warn(`RDAP fallback failed for ${url}:`, error);
-    }
-  }
-
-  return null;
-};
-
-const performWhoisLookup = async (domain: string): Promise<WhoisResponse | null> => {
   try {
-    const result = await whois(domain);
+    const proxyUrl = new URL(proxyBaseUrl);
+    proxyUrl.searchParams.set("domain", domain);
 
-    if (result?.error && isPort43UnsupportedError(result.error)) {
-      const fallback = await fetchRdapFallback(domain, result.server ?? null);
-      return fallback ?? result;
+    const res = await fetch(proxyUrl.toString(), {
+      headers: {
+        accept: "application/json",
+      },
+    });
+
+    if (!res.ok) {
+      console.warn(
+        `WHOIS proxy returned ${res.status} ${res.statusText} for ${domain}`
+      );
+      return null;
     }
 
+    const result = (await res.json()) as WhoisResponse;
+    console.log("result", result);
     return result;
-  } catch (error: any) {
-    if (error && isPort43UnsupportedError(error.message ?? "")) {
-      const fallback = await fetchRdapFallback(domain, null);
-      if (fallback) {
-        return fallback;
-      }
-    }
-
-    throw error;
+  } catch (error) {
+    console.warn("WHOIS proxy request failed:", error);
+    return null;
   }
 };
 
@@ -303,6 +192,12 @@ const persistWhoisResult = async (domain: string, data: WhoisResponse) => {
   }
 };
 
+const performWhoisLookup = async (
+  domain: string
+): Promise<WhoisResponse | null> => {
+  return fetchProxyWhois(domain);
+};
+
 let lookupResult: WhoisResponse | null = null;
 let errorMessage: string | null = null;
 const instructionText = "Enter a domain above to fetch WHOIS details.";
@@ -318,14 +213,31 @@ if (!domain) {
       }
     );
   }
+} else if (!proxyBaseUrl) {
+  errorMessage =
+    "WHOIS proxy is not configured. Please set the WHOIS_PROXY_URL environment variable.";
+  if (wantsJSON) {
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: jsonHeaders,
+    });
+  }
 } else {
   try {
     lookupResult = await performWhoisLookup(domain);
-
-    if (lookupResult?.error && isPort43UnsupportedError(lookupResult.error)) {
+    console.log(lookupResult, !lookupResult);
+    if (!lookupResult) {
+      console.log("passo1");
+      errorMessage = "Unable to complete WHOIS lookup. Please try again later.";
+    } else if (lookupResult.error != "") {
+      const normalizedError =
+        typeof lookupResult.error === "string" ? lookupResult.error.trim() : "";
+      console.log("passo2");
       errorMessage =
-        "The registry for this domain only provides legacy WHOIS over port 43, which is not supported in this environment.";
-    } else if (lookupResult) {
+        normalizedError.length > 0
+          ? normalizedError
+          : "Unable to complete WHOIS lookup. Please try again later.";
+    } else {
       await persistWhoisResult(domain, lookupResult);
     }
 
@@ -344,6 +256,7 @@ if (!domain) {
     }
   } catch (error) {
     console.error("WHOIS lookup failed:", error);
+    console.log("passo3");
     errorMessage = "Unable to complete WHOIS lookup. Please try again later.";
     if (wantsJSON) {
       return new Response(JSON.stringify({ error: errorMessage }), {
@@ -420,4 +333,3 @@ const rows =
     </div>
   ) : null
 }
-

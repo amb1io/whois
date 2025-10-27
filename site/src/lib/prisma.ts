@@ -1,36 +1,43 @@
-import type { PrismaClient as PrismaClientType } from "@prisma/client/edge";
 import { PrismaD1 } from "@prisma/adapter-d1";
 
-const PRISMA_CACHE = Symbol.for("domain-alert.prisma");
+type PrismaClientType = import("@prisma/client").PrismaClient;
+
+const REMOTE_CACHE = Symbol.for("domain-alert.prisma.remote");
+const LOCAL_CACHE = Symbol.for("domain-alert.prisma.local");
 
 type PrismaCache = WeakMap<object, PrismaClientType>;
 
-let prismaModulePromise: Promise<typeof import("@prisma/client/edge")> | null = null;
+let prismaModulePromise: Promise<typeof import("@prisma/client")> | null = null;
 
 const loadPrismaClient = async () => {
   if (!prismaModulePromise) {
-    const globalAny = globalThis as typeof globalThis & {
-      navigator?: { userAgent?: string };
-    };
-
-    globalAny.navigator ??= {};
-    globalAny.navigator.userAgent ??= "Cloudflare-Workers";
-
-    prismaModulePromise = import("@prisma/client/edge");
+    prismaModulePromise = import("@prisma/client");
   }
-
   return prismaModulePromise;
 };
 
 export const getPrismaClient = async (binding: unknown): Promise<PrismaClientType | null> => {
-  if (!binding) return null;
+  const { PrismaClient } = await loadPrismaClient();
 
-  const globalWithCache = globalThis as typeof globalThis & {
-    [PRISMA_CACHE]?: PrismaCache;
+  // Local development (no D1 binding provided)
+  if (!binding) {
+    const globalWithLocalCache = globalThis as typeof globalThis & {
+      [LOCAL_CACHE]?: PrismaClientType;
+    };
+
+    if (!globalWithLocalCache[LOCAL_CACHE]) {
+      globalWithLocalCache[LOCAL_CACHE] = new PrismaClient();
+    }
+
+    return globalWithLocalCache[LOCAL_CACHE]!;
+  }
+
+  const globalWithRemoteCache = globalThis as typeof globalThis & {
+    [REMOTE_CACHE]?: PrismaCache;
   };
-  globalWithCache[PRISMA_CACHE] ??= new WeakMap();
+  globalWithRemoteCache[REMOTE_CACHE] ??= new WeakMap();
 
-  const cache = globalWithCache[PRISMA_CACHE]!;
+  const cache = globalWithRemoteCache[REMOTE_CACHE]!;
   const key = binding as object;
   const cached = cache.get(key);
 
@@ -38,10 +45,8 @@ export const getPrismaClient = async (binding: unknown): Promise<PrismaClientTyp
     return cached;
   }
 
-  const { PrismaClient } = await loadPrismaClient();
   const adapter = new PrismaD1(binding as any);
   const client = new PrismaClient({ adapter });
-
   cache.set(key, client);
   return client;
 };
