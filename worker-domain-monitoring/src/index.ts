@@ -23,10 +23,11 @@ const SELECT_EXPIRING_DOMAINS = `
     u.email AS email,
     d.domain AS domain,
     d.expires_at AS expires_at
-  FROM user_domain_to_notify udn
-  INNER JOIN users u ON u.id = udn.user_id
-  INNER JOIN domains d ON d.id = udn.domain_id
-  WHERE d.expires_at IS NOT NULL
+  FROM subscriptions s
+  INNER JOIN users u ON u.id = s.user_id
+  INNER JOIN domains d ON d.id = s.domain_id
+  WHERE s.notify_expiry = 1
+    AND d.expires_at IS NOT NULL
     AND d.expires_at >= ?
     AND d.expires_at < ?;
 `;

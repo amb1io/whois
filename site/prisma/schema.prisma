@@ -24,7 +24,7 @@ model Domain {
   updatedAt      DateTime? @map("updated_at")
   expiresAt      DateTime? @map("expires_at")
   processAt      DateTime  @default(now()) @map("process_at")
-  watchers      UserDomainToNotify[]
+  subscriptions Subscription[]
 
   @@index([domain])
   @@index([processAt])
@@ -36,14 +36,18 @@ model Subscription {
   endpoint      String
   auth          String
   p256dh        String
-  domain        String
+  domainId      Int      @map("domain_id")
+  userId        Int      @map("user_id")
   notifyChanges Boolean  @default(false) @map("notify_changes")
   notifyExpiry  Boolean  @default(false) @map("notify_expiry")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+  domain        Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([endpoint, domain])
-  @@index([domain])
+  @@unique([endpoint, domainId, userId])
+  @@index([domainId])
+  @@index([userId])
   @@map("subscriptions")
 }
 
@@ -51,19 +55,7 @@ model User {
   id         Int                   @id @default(autoincrement())
   email      String                @unique
   createdAt  DateTime              @default(now()) @map("created_at")
-  domains    UserDomainToNotify[]
+  subscriptions Subscription[]
 
   @@map("users")
-}
-
-model UserDomainToNotify {
-  id        Int      @id @default(autoincrement())
-  domain    Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  domainId  Int      @map("domain_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    Int      @map("user_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@unique([domainId, userId])
-  @@map("user_domain_to_notify")
 }

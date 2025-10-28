@@ -37,9 +37,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   const subscription = payload?.subscription ?? null;
   const emailRaw = typeof payload?.email === "string" ? payload.email.trim().toLowerCase() : null;
 
-  const requiresNotification = notifyChanges || notifyExpiry;
-
-  if (!requiresNotification) {
+  if (!notifyChanges && !notifyExpiry) {
     return jsonResponse({ error: "Select at least one notification option." }, 400);
   }
 
@@ -47,11 +45,15 @@ export const POST: APIRoute = async ({ request, locals }) => {
     return jsonResponse({ error: "Domain is required." }, 400);
   }
 
-  if (emailRaw) {
-    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailPattern.test(emailRaw)) {
-      return jsonResponse({ error: "Invalid email address." }, 400);
-    }
+  if (!emailRaw) {
+    return jsonResponse({
+      error: "An email address is required to save notification preferences."
+    }, 400);
+  }
+
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailPattern.test(emailRaw)) {
+    return jsonResponse({ error: "Invalid email address." }, 400);
   }
 
   const hasSubscription = Boolean(
@@ -60,69 +62,53 @@ export const POST: APIRoute = async ({ request, locals }) => {
       subscription?.keys?.auth
   );
 
-  if (!hasSubscription && !emailRaw) {
-    return jsonResponse({
-      error: "Provide a valid email address or enable push notifications to receive alerts."
-    }, 400);
+  if (!hasSubscription) {
+    return jsonResponse({ error: "Push subscription details are incomplete." }, 400);
   }
 
   try {
-    if (hasSubscription && subscription) {
-      await prisma.subscription.upsert({
-        where: {
-          endpoint_domain: {
-            endpoint: String(subscription.endpoint),
-            domain
-          }
-        },
-        update: {
-          auth: String(subscription.keys.auth),
-          p256dh: String(subscription.keys.p256dh),
-          notifyChanges,
-          notifyExpiry
-        },
-        create: {
-          endpoint: String(subscription.endpoint),
-          auth: String(subscription.keys.auth),
-          p256dh: String(subscription.keys.p256dh),
-          domain,
-          notifyChanges,
-          notifyExpiry
-        }
+    let domainRecord = await prisma.domain.findFirst({
+      where: { domain }
+    });
+
+    if (!domainRecord) {
+      domainRecord = await prisma.domain.create({
+        data: { domain }
       });
     }
 
-    if (emailRaw) {
-      const user = await prisma.user.upsert({
-        where: { email: emailRaw },
-        update: {},
-        create: { email: emailRaw }
-      });
+    const user = await prisma.user.upsert({
+      where: { email: emailRaw },
+      update: {},
+      create: { email: emailRaw }
+    });
 
-      let domainRecord = await prisma.domain.findFirst({
-        where: { domain }
-      });
-
-      if (!domainRecord) {
-        domainRecord = await prisma.domain.create({
-          data: { domain }
-        });
-      }
-
-      await prisma.userDomainToNotify.upsert({
-        where: {
-          domainId_userId: {
-            domainId: domainRecord.id,
-            userId: user.id
-          }
-        },
-        update: {},
-        create: {
+    await prisma.subscription.upsert({
+      where: {
+        endpoint_domainId_userId: {
+          endpoint: String(subscription.endpoint),
           domainId: domainRecord.id,
           userId: user.id
         }
-      });
-    }
+      },
+      update: {
+        auth: String(subscription.keys.auth),
+        p256dh: String(subscription.keys.p256dh),
+        notifyChanges,
+        notifyExpiry,
+        domainId: domainRecord.id,
+        userId: user.id
+      },
+      create: {
+        endpoint: String(subscription.endpoint),
+        auth: String(subscription.keys.auth),
+        p256dh: String(subscription.keys.p256dh),
+        domainId: domainRecord.id,
+        userId: user.id,
+        notifyChanges,
+        notifyExpiry
+      }
+    });
 
     return jsonResponse({ ok: true });
   } catch (error) {
