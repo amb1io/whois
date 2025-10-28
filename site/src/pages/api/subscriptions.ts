@@ -17,6 +17,113 @@ if (typeof globalThis.exports === "undefined") {
   (globalThis as typeof globalThis & { module: unknown }).module = cjsModule;
 }
 
+export const GET: APIRoute = async ({ request, locals }) => {
+  const prisma = await getPrismaClient(locals.runtime?.env?.domain_monitor);
+
+  if (!prisma) {
+    return jsonResponse({ error: "Database is not available." }, 503);
+  }
+
+  const url = new URL(request.url);
+  const auth = url.searchParams.get("auth");
+
+  if (!auth) {
+    return jsonResponse({ error: "The auth parameter is required." }, 400);
+  }
+
+  try {
+    const subscriptions = await prisma.subscription.findMany({
+      where: {
+        auth,
+        domainNotify: true
+      },
+      include: {
+        domain: {
+          select: {
+            domain: true,
+            expiresAt: true
+          }
+        }
+      },
+      orderBy: {
+        updatedAt: "desc"
+      }
+    });
+
+    const notifications = subscriptions.map((item) => {
+      const message = item.notifyExpiry
+        ? "Domain expiration approaching."
+        : item.notifyChanges
+        ? "WHOIS details were updated."
+        : "Domain update available.";
+
+      return {
+        id: item.id,
+        domain: item.domain?.domain ?? null,
+        notifyChanges: item.notifyChanges,
+        notifyExpiry: item.notifyExpiry,
+        domainNotify: item.domainNotify,
+        userRead: item.userRead,
+        message,
+        updatedAt: item.updatedAt?.toISOString?.() ?? null
+      };
+    });
+
+    return jsonResponse({ ok: true, notifications });
+  } catch (error) {
+    console.error("Failed to retrieve notifications:", error);
+    return jsonResponse({ error: "Unable to load notifications." }, 500);
+  }
+};
+
+export const PATCH: APIRoute = async ({ request, locals }) => {
+  const prisma = await getPrismaClient(locals.runtime?.env?.domain_monitor);
+
+  if (!prisma) {
+    return jsonResponse({ error: "Database is not available." }, 503);
+  }
+
+  let payload: any;
+  try {
+    payload = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON payload." }, 400);
+  }
+
+  const idRaw = payload?.id;
+  const auth =
+    typeof payload?.auth === "string" ? payload.auth.trim() : null;
+
+  const idNumber = Number(idRaw);
+  if (!Number.isInteger(idNumber) || idNumber <= 0) {
+    return jsonResponse({ error: "A valid notification id is required." }, 400);
+  }
+
+  const where: Record<string, unknown> = { id: idNumber };
+  if (auth) {
+    where.auth = auth;
+  }
+
+  try {
+    const result = await prisma.subscription.updateMany({
+      where,
+      data: {
+        domainNotify: false,
+        userRead: true,
+      },
+    });
+
+    if (result.count === 0) {
+      return jsonResponse({ error: "Notification not found." }, 404);
+    }
+
+    return jsonResponse({ ok: true, updated: result.count });
+  } catch (error) {
+    console.error("Failed to update notification:", error);
+    return jsonResponse({ error: "Unable to update notification." }, 500);
+  }
+};
+
 export const POST: APIRoute = async ({ request, locals }) => {
   const prisma = await getPrismaClient(locals.runtime?.env?.domain_monitor);
 
