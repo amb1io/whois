@@ -96,6 +96,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
         p256dh: String(subscription.keys.p256dh),
         notifyChanges,
         notifyExpiry,
+        userRead: false,
         domainId: domainRecord.id,
         userId: user.id
       },
@@ -106,7 +107,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
         domainId: domainRecord.id,
         userId: user.id,
         notifyChanges,
-        notifyExpiry
+        notifyExpiry,
+        userRead: false
       }
     });
 
