@@ -97,6 +97,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
         notifyChanges,
         notifyExpiry,
         userRead: false,
+        domainNotify: false,
         domainId: domainRecord.id,
         userId: user.id
       },
@@ -108,7 +109,8 @@ export const POST: APIRoute = async ({ request, locals }) => {
         userId: user.id,
         notifyChanges,
         notifyExpiry,
-        userRead: false
+        userRead: false,
+        domainNotify: false
       }
     });
 
