@@ -14,59 +14,59 @@
   "categories": ["productivity", "utilities"],
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",
+      "src": "/whois/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/icon-512x512.png",
+      "src": "/whois/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/icons/android/android-launchericon-512-512.png",
+      "src": "/whois/icons/android/android-launchericon-512-512.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/icons/maskable-icon-512x512.png",
+      "src": "/whois/icons/maskable-icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/icons/android/android-launchericon-192-192.png",
+      "src": "/whois/icons/android/android-launchericon-192-192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/android/android-launchericon-144-144.png",
+      "src": "/whois/icons/android/android-launchericon-144-144.png",
       "sizes": "144x144",
       "type": "image/png"
     },
     {
-      "src": "/icons/android/android-launchericon-96-96.png",
+      "src": "/whois/icons/android/android-launchericon-96-96.png",
       "sizes": "96x96",
       "type": "image/png"
     },
     {
-      "src": "/icons/ios/180.png",
+      "src": "/whois/icons/ios/180.png",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/ios/192.png",
+      "src": "/whois/icons/ios/192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/ios/512.png",
+      "src": "/whois/icons/ios/512.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/icons/ios/1024.png",
+      "src": "/whois/icons/ios/1024.png",
       "sizes": "1024x1024",
       "type": "image/png"
     }
@@ -79,7 +79,7 @@
       "url": "/whois/#monitor-domain",
       "icons": [
         {
-          "src": "/icons/icon-192x192.png",
+          "src": "/whois/icons/icon-192x192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -92,7 +92,7 @@
       "url": "/whois/#notifications",
       "icons": [
         {
-          "src": "/icons/icon-192x192.png",
+          "src": "/whois/icons/icon-192x192.png",
           "sizes": "192x192",
           "type": "image/png"
         }
@@ -101,25 +101,25 @@
   ],
   "screenshots": [
     {
-      "src": "/icons/windows11/SplashScreen.scale-400.png",
+      "src": "/whois/icons/windows11/SplashScreen.scale-400.png",
       "sizes": "2480x1200",
       "type": "image/png",
       "form_factor": "wide"
     },
     {
-      "src": "/icons/windows11/SplashScreen.scale-200.png",
+      "src": "/whois/icons/windows11/SplashScreen.scale-200.png",
       "sizes": "1240x600",
       "type": "image/png",
       "form_factor": "wide"
     },
     {
-      "src": "/icons/windows11/SplashScreen.scale-150.png",
+      "src": "/whois/icons/windows11/SplashScreen.scale-150.png",
       "sizes": "930x450",
       "type": "image/png",
       "form_factor": "wide"
     },
     {
-      "src": "/icons/ios/1024.png",
+      "src": "/whois/icons/ios/1024.png",
       "sizes": "1024x1024",
       "type": "image/png",
       "form_factor": "narrow"
