@@ -48,23 +48,37 @@ const schemaData = {
     "query-input": "required name=domain"
   }
 };
-const faviconHref = withBasePath("/favicon.svg");
+const faviconSvgHref = withBasePath("/favicon.svg");
+const faviconPng32Href = withBasePath("/icons/ios/32.png");
+const faviconPng16Href = withBasePath("/icons/ios/16.png");
 const manifestHref = withBasePath("/manifest.webmanifest");
-const appleTouchIconHref = withBasePath("/icons/icon-512x512.png");
+const appleTouchIconHref = withBasePath("/icons/ios/180.png");
+const appleTouchIcon167Href = withBasePath("/icons/ios/167.png");
+const appleTouchIcon152Href = withBasePath("/icons/ios/152.png");
 const themeColor = "#2563eb";
 const serviceWorkerUrl = withBasePath("/sw.js");
 const serviceWorkerScope = normalizedBase ? `${normalizedBase}/` : "/";
+const maskIconHref = withBasePath("/icons/maskable-icon-512x512.png");
+const msTileImageHref = withBasePath("/icons/windows11/Square150x150Logo.scale-200.png");
+const splashImageHref = withBasePath("/icons/windows11/SplashScreen.scale-200.png");
 ---
 
 <html lang="en" class="h-full">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href={faviconHref} />
+    <link rel="icon" type="image/svg+xml" href={faviconSvgHref} />
+    <link rel="icon" type="image/png" sizes="32x32" href={faviconPng32Href} />
+    <link rel="icon" type="image/png" sizes="16x16" href={faviconPng16Href} />
     <link rel="manifest" href={manifestHref} />
-    <link rel="apple-touch-icon" href={appleTouchIconHref} />
+    <link rel="apple-touch-icon" sizes="180x180" href={appleTouchIconHref} />
+    <link rel="apple-touch-icon" sizes="167x167" href={appleTouchIcon167Href} />
+    <link rel="apple-touch-icon" sizes="152x152" href={appleTouchIcon152Href} />
+    <link rel="mask-icon" href={maskIconHref} color="#2563eb" />
+    <meta name="msapplication-TileImage" content={msTileImageHref} />
+    <meta name="msapplication-TileColor" content="#2563eb" />
     <meta
       name="viewport"
-      content="width=device-width,initial-scale=1,user-scalable=yes"
+      content="width=device-width,initial-scale=1,user-scalable=no"
     />
     <meta name="theme-color" content={themeColor} />
     <meta name="description" content={siteDescription} />
@@ -85,6 +99,7 @@ const serviceWorkerScope = normalizedBase ? `${normalizedBase}/` : "/";
     <meta name="twitter:image" content={ogImageUrl} />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="apple-touch-startup-image" href={splashImageHref} />
     <title>{siteTitle}</title>
     <script type="application/ld+json" is:inline>
       {JSON.stringify(schemaData)}
@@ -107,7 +122,7 @@ const serviceWorkerScope = normalizedBase ? `${normalizedBase}/` : "/";
     <header
       class="flex items-center justify-end gap-6 px-6 py-4 text-sm text-slate-600"
     >
-      <div class="relative" x-data="notificationsDropdown()">
+      <div class="relative" id="notifications" x-data="notificationsDropdown()">
         <button
           type="button"
           class="relative rounded-full border border-transparent bg-white p-2 text-slate-500 shadow-sm transition hover:border-slate-200 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-white"
@@ -250,6 +265,7 @@ const serviceWorkerScope = normalizedBase ? `${normalizedBase}/` : "/";
           </div>
         </form>
         <section
+          id="monitor-domain"
           class="flex w-full max-w-2xl flex-col items-stretch gap-4 text-left"
           x-data="monitorModal()"
           x-on:monitor-modal\:open.window="openModal($event.detail.domain)"
@@ -546,6 +562,7 @@ const serviceWorkerScope = normalizedBase ? `${normalizedBase}/` : "/";
               if (!provider || typeof provider.getExisting !== "function") {
                 this.notifications = [];
                 this.auth = null;
+                this.loading = false;
                 return;
               }
               const existing = await provider.getExisting();
@@ -553,6 +570,7 @@ const serviceWorkerScope = normalizedBase ? `${normalizedBase}/` : "/";
               if (!auth) {
                 this.notifications = [];
                 this.auth = null;
+                this.loading = false;
                 return;
               }
               this.auth = auth;
