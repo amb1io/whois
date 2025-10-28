@@ -41,6 +41,7 @@ model Subscription {
   notifyChanges Boolean  @default(false) @map("notify_changes")
   notifyExpiry  Boolean  @default(false) @map("notify_expiry")
   userRead      Boolean  @default(false) @map("user_read")
+  domainNotify  Boolean  @default(false) @map("domain_notify")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
   domain        Domain   @relation(fields: [domainId], references: [id], onDelete: Cascade)
