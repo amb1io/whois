@@ -6,18 +6,89 @@ const baseUrl = import.meta.env.BASE_URL ?? "/";
 const normalizedBase = baseUrl === "/" ? "" : baseUrl.replace(/\/$/, "");
 const whoisApiPath = `${normalizedBase}/api/whois`;
 const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
+const withBasePath = (path: string) =>
+  normalizedBase ? `${normalizedBase}${path}` : path;
+const siteOrigin = Astro.site?.origin ?? "https://example.com";
+const siteTitle = "Domain Alert";
+const siteDescription =
+  "Monitor WHOIS changes, receive domain expiration alerts, and stay ahead of critical DNS updates.";
+const siteAuthor = "Rhamses Soares";
+const canonicalUrl = `${siteOrigin}${normalizedBase || "/"}`;
+const ogImageUrl = `${siteOrigin}${normalizedBase || ""}/images/domain-alert-og.png`;
+const logoUrl = `${siteOrigin}${normalizedBase || ""}/images/domain-alert-logo.png`;
+const schemaData = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: siteTitle,
+  url: canonicalUrl,
+  description: siteDescription,
+  applicationCategory: "Domain management",
+  operatingSystem: "Web",
+  inLanguage: "en",
+  author: {
+    "@type": "Person",
+    name: siteAuthor
+  },
+  publisher: {
+    "@type": "Organization",
+    name: siteTitle,
+    logo: {
+      "@type": "ImageObject",
+      url: logoUrl
+    }
+  },
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD"
+  },
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${canonicalUrl}api/whois?domain={domain}`,
+    "query-input": "required name=domain"
+  }
+};
+const faviconHref = withBasePath("/favicon.svg");
+const manifestHref = withBasePath("/manifest.webmanifest");
+const appleTouchIconHref = withBasePath("/icons/icon-512x512.png");
+const themeColor = "#2563eb";
+const serviceWorkerUrl = withBasePath("/sw.js");
+const serviceWorkerScope = normalizedBase ? `${normalizedBase}/` : "/";
 ---
 
 <html lang="en" class="h-full">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href={faviconHref} />
+    <link rel="manifest" href={manifestHref} />
+    <link rel="apple-touch-icon" href={appleTouchIconHref} />
     <meta
       name="viewport"
       content="width=device-width,initial-scale=1,user-scalable=yes"
     />
+    <meta name="theme-color" content={themeColor} />
+    <meta name="description" content={siteDescription} />
+    <meta name="keywords" content="domain monitoring, whois alerts, domain expiration, DNS updates, domain alert" />
+    <meta name="author" content={siteAuthor} />
     <meta name="generator" content={Astro.generator} />
-    <title>Domain Alert</title>
+    <link rel="canonical" href={canonicalUrl} />
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={siteTitle} />
+    <meta property="og:description" content={siteDescription} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:site_name" content={siteTitle} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={siteTitle} />
+    <meta name="twitter:description" content={siteDescription} />
+    <meta name="twitter:image" content={ogImageUrl} />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>{siteTitle}</title>
+    <script type="application/ld+json" is:inline>
+      {JSON.stringify(schemaData)}
+    </script>
     <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
     <script src="https://unpkg.com/alpinejs@3.14.1" defer></script>
     <style is:inline>
@@ -306,10 +377,9 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
         </div>
       </div>
     </footer>
-    <script is:inline define:vars={{ subscriptionsApiPath }}>
+    <script is:inline define:vars={{ subscriptionsApiPath, serviceWorkerUrl, serviceWorkerScope, vapidPublicKey }}>
       (() => {
-        // const VAPID_PUBLIC_KEY = ${JSON.stringify(vapidPublicKey)};
-        const VAPID_PUBLIC_KEY = null;
+        const VAPID_PUBLIC_KEY = vapidPublicKey || null;
         if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
           window.DomainAlertPush = null;
           return;
@@ -328,12 +398,19 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
           return outputArray;
         };
 
+        const SERVICE_WORKER_URL = serviceWorkerUrl;
+        const SERVICE_WORKER_SCOPE = serviceWorkerScope;
+
         let registrationPromise = null;
+        let lastSubscriptionPayload = null;
         const getRegistration = async () => {
           if (!registrationPromise) {
-            registrationPromise = navigator.serviceWorker.register("/sw.js", {
-              scope: "/",
-            });
+            registrationPromise = navigator.serviceWorker.register(
+              SERVICE_WORKER_URL,
+              {
+                scope: SERVICE_WORKER_SCOPE,
+              }
+            );
           }
           return registrationPromise;
         };
@@ -361,7 +438,13 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
               const existingSubscription =
                 await registration.pushManager.getSubscription();
               if (existingSubscription) {
-                return existingSubscription.toJSON();
+                const jsonData = existingSubscription.toJSON();
+                const payload = {
+                  data: jsonData,
+                  endpoint: jsonData?.endpoint ?? null,
+                };
+                lastSubscriptionPayload = payload;
+                return payload;
               }
 
               if (!VAPID_PUBLIC_KEY) {
@@ -373,11 +456,20 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
                 userVisibleOnly: true,
                 applicationServerKey,
               });
-              return subscription.toJSON();
+              const jsonData = subscription.toJSON();
+              const payload = {
+                data: jsonData,
+                endpoint: jsonData?.endpoint ?? null,
+              };
+              lastSubscriptionPayload = payload;
+              return payload;
             } catch (error) {
               console.error("Push subscription failed:", error);
               throw error;
             }
+          },
+          getLast() {
+            return lastSubscriptionPayload;
           },
         };
       })();
@@ -473,8 +565,12 @@ const subscriptionsApiPath = `${normalizedBase}/api/subscriptions`;
                   console.warn("Push subscription unavailable:", error);
                   subscriptionPayload = null;
                 }
+                if (!subscriptionPayload && typeof pushSupport.getLast === "function") {
+                  subscriptionPayload = pushSupport.getLast();
+                }
               }
-              payload.subscription = subscriptionPayload;
+              payload.subscription = subscriptionPayload?.data ?? null;
+              payload.subscriptionEndpoint = subscriptionPayload?.endpoint ?? null;
               const response = await fetch(SUBSCRIPTIONS_API_PATH, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },

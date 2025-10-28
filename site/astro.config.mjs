@@ -21,6 +21,7 @@ const prismaDefaultPath = fileURLToPath(
 
 // https://astro.build/config
 export default defineConfig({
+  site: "https://amb1.io",
   output: "server",
   base: basePath,
   adapter: cloudflare({
