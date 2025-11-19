@@ -1,5 +1,5 @@
 name = "worker-domain-monitoring"
-main = "src/index.ts"
+main = "worker-domain-monitoring/src/index.ts"
 compatibility_date = "2024-09-23"
 base_dir = "."
 
