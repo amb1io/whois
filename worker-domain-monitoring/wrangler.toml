@@ -1,6 +1,7 @@
 name = "worker-domain-monitoring"
 main = "src/index.ts"
 compatibility_date = "2024-09-23"
+base_dir = "worker-domain-monitoring"
 
 [vars]
 MAILERSEND_API_URL = "https://api.mailersend.com/v1/email"
