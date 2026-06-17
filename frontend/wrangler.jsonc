@@ -1,9 +1,14 @@
 {
   "name": "whois-frontend",
-  "pages_build_output_dir": "./dist",
+  "main": "@astrojs/cloudflare/entrypoints/server",
   "compatibility_date": "2026-06-16",
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS"
+  },
   "vars": {
-    "PUBLIC_DNS_SEARCH_API_URL": "https://dns-search.YOUR_SUBDOMAIN.workers.dev/search"
+    "PUBLIC_DNS_SEARCH_API_URL": "https://dns-search.YOUR_SUBDOMAIN.workers.dev/search",
+    "PUBLIC_DNS_NOTIFY_API_URL": "https://dns-search.YOUR_SUBDOMAIN.workers.dev/notify"
   },
   "observability": {
     "logs": {
@@ -13,5 +18,5 @@
     "traces": {
       "enabled": true
     }
-  },
+  }
 }
