@@ -19,8 +19,8 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "demos",
-      "database_id": "bde59a46-2fae-43d2-b2d9-b27373655821",
+      "database_name": "domain-monitor",
+      "database_id": "8b21eb9b-08fb-47e5-889c-cd2a68181e0b",
       "migrations_dir": "migrations"
     }
   ]
