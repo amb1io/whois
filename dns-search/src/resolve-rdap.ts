@@ -8,11 +8,10 @@ import {
   buildRdapOrgFallbackUrl,
   buildRdapUrl,
   fetchRdap,
-  lookupRdapServer,
+  lookupRdapServerForDomain,
   RDAP_ORG_FALLBACK,
   treatRdapResponse,
 } from "./rdap";
-import { extractTld } from "./tld";
 
 export type RdapCacheSource = "HIT" | "D1" | "MISS";
 
@@ -57,11 +56,10 @@ export async function resolveDomainRdap(
     };
   }
 
-  const tld = extractTld(domain);
-  const rdapServer = await lookupRdapServer(env.DB, tld);
-  const serverUsed = rdapServer ?? RDAP_ORG_FALLBACK;
-  const rdapUrl = rdapServer
-    ? buildRdapUrl(rdapServer, domain)
+  const match = await lookupRdapServerForDomain(env.DB, domain);
+  const serverUsed = match?.rdap ?? RDAP_ORG_FALLBACK;
+  const rdapUrl = match
+    ? buildRdapUrl(match.rdap, domain)
     : buildRdapOrgFallbackUrl(domain);
 
   let upstream;

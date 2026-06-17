@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import { resolveDomainRdap } from "../resolve-rdap";
-import { extractTld, normalizeDomain } from "../tld";
+import { normalizeDomain } from "../tld";
 import {
   buildRdapOrgFallbackUrl,
   buildRdapUrl,
   fetchRdap,
-  lookupRdapServer,
+  lookupRdapServerForDomain,
 } from "../rdap";
 
 const searchRoute = new Hono<{ Bindings: Env }>();
@@ -48,10 +48,9 @@ searchRoute.post("/search", async (c) => {
     return rdapJsonResponse(resolved.description, resolved.cache);
   }
 
-  const tld = extractTld(domain);
-  const rdapServer = await lookupRdapServer(c.env.DB, tld);
-  const rdapUrl = rdapServer
-    ? buildRdapUrl(rdapServer, domain)
+  const match = await lookupRdapServerForDomain(c.env.DB, domain);
+  const rdapUrl = match
+    ? buildRdapUrl(match.rdap, domain)
     : buildRdapOrgFallbackUrl(domain);
 
   let upstream;

@@ -2,19 +2,17 @@ import {
   buildRdapOrgFallbackUrl,
   buildRdapUrl,
   fetchRdap,
-  lookupRdapServer,
+  lookupRdapServerForDomain,
   treatRdapResponse,
 } from "./rdap";
-import { extractTld } from "./tld";
 
 export async function fetchDomainRdap(
   env: Env,
   domain: string
 ): Promise<Record<string, unknown> | null> {
-  const tld = extractTld(domain);
-  const rdapServer = await lookupRdapServer(env.DB, tld);
-  const rdapUrl = rdapServer
-    ? buildRdapUrl(rdapServer, domain)
+  const match = await lookupRdapServerForDomain(env.DB, domain);
+  const rdapUrl = match
+    ? buildRdapUrl(match.rdap, domain)
     : buildRdapOrgFallbackUrl(domain);
 
   let upstream;

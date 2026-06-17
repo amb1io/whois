@@ -1,4 +1,15 @@
+import { tldCandidates } from "./tld";
+
 export const RDAP_ORG_FALLBACK = "https://rdap.org";
+
+function rdapBaseHasRootPath(base: string): boolean {
+  try {
+    const { pathname } = new URL(base);
+    return !pathname || pathname === "/";
+  } catch {
+    return false;
+  }
+}
 
 export function buildRdapUrl(rdapBase: string, domain: string): string {
   const base = rdapBase.replace(/\/+$/, "");
@@ -8,6 +19,10 @@ export function buildRdapUrl(rdapBase: string, domain: string): string {
   }
 
   if (/\/v\d+$/.test(base)) {
+    return `${base}/domain/${domain}`;
+  }
+
+  if (rdapBaseHasRootPath(base)) {
     return `${base}/domain/${domain}`;
   }
 
@@ -41,6 +56,20 @@ export async function lookupRdapServer(
     .first<{ rdap: string }>();
 
   return row?.rdap ?? null;
+}
+
+export async function lookupRdapServerForDomain(
+  db: D1Database,
+  domain: string
+): Promise<{ tld: string; rdap: string } | null> {
+  for (const tld of tldCandidates(domain)) {
+    const rdap = await lookupRdapServer(db, tld);
+    if (rdap) {
+      return { tld, rdap };
+    }
+  }
+
+  return null;
 }
 
 export async function fetchRdap(
