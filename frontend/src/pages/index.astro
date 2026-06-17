@@ -135,7 +135,6 @@ const notifyApiUrl =
           rows: [],
           error: null,
           successMessage: "",
-          cacheHeader: "",
           get hasResults() {
             return this.rows.length > 0;
           },
@@ -146,7 +145,6 @@ const notifyApiUrl =
             this.error = null;
             this.successMessage = "";
             this.rows = [];
-            this.cacheHeader = "";
           },
           onMonitorSaved(event) {
             const domain = event.detail?.domain;
@@ -161,8 +159,6 @@ const notifyApiUrl =
               this.error = "Unexpected search response.";
               return;
             }
-
-            this.cacheHeader = xhr.getResponseHeader("X-Cache") ?? "";
 
             if (xhr.status === 200) {
               try {
