@@ -1,0 +1,8 @@
+{
+  "name": "domains-reseller-frontend",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-06-16",
+  "vars": {
+    "PUBLIC_DNS_SEARCH_API_URL": "https://dns-search.YOUR_SUBDOMAIN.workers.dev/search"
+  }
+}

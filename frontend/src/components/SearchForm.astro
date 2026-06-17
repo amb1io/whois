@@ -1,0 +1,49 @@
+---
+interface Props {
+  searchApiUrl: string;
+}
+
+const { searchApiUrl } = Astro.props;
+---
+
+<form
+  id="domain-search-form"
+  class="flex w-full flex-col items-center gap-4"
+  hx-post={searchApiUrl}
+  hx-swap="none"
+  hx-indicator="#whois-loading"
+  hx-on::before-request="window.dispatchEvent(new CustomEvent('domain-search:start'))"
+  hx-on::after-request="window.dispatchEvent(new CustomEvent('domain-search:complete', { detail: event }))"
+>
+  <div
+    class="flex w-full items-center gap-3 rounded-full border border-slate-200 bg-white px-5 py-3 shadow-sm transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100"
+  >
+    <svg
+      class="h-5 w-5 text-slate-400"
+      fill="none"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+    >
+      <circle cx="11" cy="11" r="7"></circle>
+      <line x1="20" y1="20" x2="16.65" y2="16.65"></line>
+    </svg>
+    <input
+      type="search"
+      name="domain"
+      id="domain-search-input"
+      aria-label="Search domain"
+      placeholder="Search domains or enter a URL..."
+      class="flex-1 border-none bg-transparent text-base text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+      required
+    />
+    <button
+      type="submit"
+      class="hidden rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-white sm:inline"
+    >
+      Search
+    </button>
+  </div>
+</form>

@@ -1,0 +1,321 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import SearchForm from "../components/SearchForm.astro";
+import WhoisResults from "../components/WhoisResults.astro";
+import MonitorModal from "../components/MonitorModal.astro";
+import Footer from "../components/Footer.astro";
+
+const siteTitle = "Domain Alert";
+const siteDescription =
+  "Monitor WHOIS changes, receive domain expiration alerts, and stay ahead of critical DNS updates.";
+const siteAuthor = "Rhamses Soares";
+const themeColor = "#2563eb";
+const searchApiUrl =
+  import.meta.env.PUBLIC_DNS_SEARCH_API_URL ?? "http://localhost:8787/search";
+---
+
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,user-scalable=no"
+    />
+    <meta name="theme-color" content={themeColor} />
+    <meta name="description" content={siteDescription} />
+    <meta name="author" content={siteAuthor} />
+    <meta name="generator" content={Astro.generator} />
+    <title>{siteTitle}</title>
+    <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+    <script src="https://unpkg.com/alpinejs@3.14.1" defer></script>
+    <style is:inline>
+      #whois-loading {
+        display: none;
+      }
+      #whois-loading.htmx-request {
+        display: flex;
+      }
+      [x-cloak] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body class="flex min-h-screen flex-col bg-slate-100 text-slate-900">
+    <Header />
+
+    <main class="flex flex-1 flex-col items-center justify-center px-4">
+      <div
+        class="flex w-full max-w-3xl flex-col items-center gap-8 text-center"
+      >
+        <h1
+          class="text-4xl font-semibold tracking-tight text-slate-900 sm:text-6xl"
+        >
+          Domain <span class="text-blue-600">Alert</span>
+        </h1>
+        <p class="text-base text-slate-600 sm:text-lg">
+          Track availability, price changes, and expirations for domains you
+          care about.
+        </p>
+        <SearchForm searchApiUrl={searchApiUrl} />
+        <section
+          id="monitor-domain"
+          class="flex w-full max-w-2xl flex-col items-stretch gap-4 text-left"
+          x-data="domainSearch()"
+          x-on:domain-search:start.window="onSearchStart()"
+          x-on:domain-search:complete.window="onSearchComplete($event)"
+        >
+          <WhoisResults />
+          <div
+            id="whois-loading"
+            class="mt-2 items-center gap-2 text-sm text-slate-600"
+            role="status"
+            aria-live="polite"
+          >
+            <svg
+              class="h-4 w-4 animate-spin text-blue-600"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                class="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                stroke-width="4"></circle>
+              <path
+                class="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+            </svg>
+            <span>Fetching WHOIS details...</span>
+          </div>
+          <div
+            x-data="monitorModal()"
+            x-on:monitor-modal:open.window="openModal($event.detail.domain)"
+            x-on:keydown.escape.window="closeModal()"
+          >
+            <MonitorModal />
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <Footer />
+
+    <script is:inline>
+      document.addEventListener("alpine:init", () => {
+        Alpine.data("notificationsDropdown", () => ({
+          open: false,
+          notifications: [],
+          loading: false,
+          get hasNotifications() {
+            return this.notifications.length > 0;
+          },
+          toggle() {
+            this.open = !this.open;
+          },
+          close() {
+            this.open = false;
+          },
+        }));
+
+        Alpine.data("domainSearch", () => ({
+          searchedDomain: "",
+          rows: [],
+          error: null,
+          cacheHeader: "",
+          get hasResults() {
+            return this.rows.length > 0;
+          },
+          get quotedDomain() {
+            return this.searchedDomain ? `"${this.searchedDomain}"` : "";
+          },
+          onSearchStart() {
+            this.error = null;
+            this.rows = [];
+            this.cacheHeader = "";
+          },
+          onSearchComplete(event) {
+            const htmxEvent = event.detail;
+            const xhr = htmxEvent?.detail?.xhr;
+            if (!xhr) {
+              this.error = "Unexpected search response.";
+              return;
+            }
+
+            this.cacheHeader = xhr.getResponseHeader("X-Cache") ?? "";
+
+            if (xhr.status === 200) {
+              try {
+                const data = JSON.parse(xhr.responseText);
+                const input = document.getElementById("domain-search-input");
+                this.searchedDomain =
+                  data.ldhName ||
+                  data.unicodeName ||
+                  (input instanceof HTMLInputElement ? input.value : "");
+                this.rows = parseRdapRows(data);
+                this.error = null;
+              } catch {
+                this.error = "Unable to parse RDAP response.";
+                this.rows = [];
+              }
+              return;
+            }
+
+            this.rows = [];
+            try {
+              const payload = JSON.parse(xhr.responseText);
+              this.error =
+                payload.error ||
+                payload.description?.join?.(" ") ||
+                payload.title ||
+                `Request failed (${xhr.status})`;
+            } catch {
+              this.error = xhr.responseText || `Request failed (${xhr.status})`;
+            }
+          },
+        }));
+
+        Alpine.data("monitorModal", () => ({
+          open: false,
+          domain: "",
+          notifyChanges: false,
+          notifyExpiry: false,
+          email: "",
+          emailError: "",
+          saving: false,
+          init() {
+            this.$watch("notifyChanges", () => {
+              if (!this.showEmailField) {
+                this.email = "";
+                this.emailError = "";
+              }
+            });
+            this.$watch("notifyExpiry", () => {
+              if (!this.showEmailField) {
+                this.email = "";
+                this.emailError = "";
+              }
+            });
+          },
+          get modalSubtitle() {
+            if (!this.domain) {
+              return "Choose how you want to stay informed about this domain.";
+            }
+            return `Choose how you want to stay informed about ${this.domain}.`;
+          },
+          get showEmailField() {
+            return this.notifyChanges || this.notifyExpiry;
+          },
+          openModal(domain) {
+            this.domain = domain || "";
+            this.notifyChanges = false;
+            this.notifyExpiry = false;
+            this.email = "";
+            this.emailError = "";
+            this.open = true;
+          },
+          closeModal() {
+            this.open = false;
+          },
+          submit() {
+            if (this.saving) return;
+            this.saving = true;
+            try {
+              if (!this.notifyChanges && !this.notifyExpiry) {
+                this.emailError = "";
+                this.closeModal();
+                return;
+              }
+              if (this.showEmailField) {
+                const trimmedEmail = this.email.trim();
+                if (!trimmedEmail) {
+                  this.emailError = "Email address is required.";
+                  return;
+                }
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailPattern.test(trimmedEmail)) {
+                  this.emailError = "Please enter a valid email address.";
+                  return;
+                }
+              }
+              this.closeModal();
+            } finally {
+              this.saving = false;
+            }
+          },
+        }));
+      });
+
+      function formatDate(value) {
+        if (!value) return "—";
+        const date = new Date(value);
+        if (Number.isNaN(date.valueOf())) return String(value);
+        return new Intl.DateTimeFormat(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        }).format(date);
+      }
+
+      function vcardField(entity, fieldName) {
+        const vcard = entity?.vcardArray?.[1];
+        if (!Array.isArray(vcard)) return null;
+        const entry = vcard.find((item) => item[0] === fieldName);
+        return entry?.[3] ?? null;
+      }
+
+      function parseRdapRows(data) {
+        const registrar = (data.entities || []).find((entity) =>
+          (entity.roles || []).includes("registrar")
+        );
+        const registrarName = registrar ? vcardField(registrar, "fn") : null;
+        const registrarId =
+          registrar?.publicIds?.find((id) =>
+            String(id.type || "").includes("Registrar")
+          )?.identifier ?? null;
+        const events = data.events || [];
+        const eventDate = (action) =>
+          events.find((event) => event.eventAction === action)?.eventDate;
+        const nameservers = (data.nameservers || [])
+          .map((ns) => ns.unicodeName || ns.ldhName)
+          .filter(Boolean);
+
+        return [
+          { label: "Domain", value: data.unicodeName || data.ldhName || "—" },
+          { label: "Handle", value: data.handle || "—" },
+          { label: "Registrar", value: registrarName || "—" },
+          { label: "Registrar ID", value: registrarId || "—" },
+          {
+            label: "Statuses",
+            value: (data.status || []).join(", ") || "—",
+          },
+          {
+            label: "Nameservers",
+            value: nameservers.join(", ") || "—",
+          },
+          {
+            label: "Created At",
+            value: formatDate(eventDate("registration")),
+          },
+          {
+            label: "Updated At",
+            value: formatDate(eventDate("last changed")),
+          },
+          {
+            label: "Expires At",
+            value: formatDate(eventDate("expiration")),
+          },
+          {
+            label: "DNSSEC",
+            value:
+              data.secureDNS?.delegationSigned === true ? "Signed" : "Unsigned",
+          },
+        ];
+      }
+    </script>
+  </body>
+</html>
