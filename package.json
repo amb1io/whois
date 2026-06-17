@@ -1,0 +1,21 @@
+{
+  "name": "domains-reseller",
+  "private": true,
+  "workspaces": [
+    "dns-list",
+    "dns-search",
+    "frontend"
+  ],
+  "scripts": {
+    "dev:dns-list": "npm run dev -w dns-list",
+    "dev:dns-search": "npm run dev -w dns-search",
+    "dev:frontend": "npm run dev -w frontend",
+    "deploy:dns-list": "npm run deploy -w dns-list",
+    "deploy:dns-search": "npm run deploy -w dns-search",
+    "deploy:frontend": "npm run deploy -w frontend",
+    "migrate:dns-list:local": "npm run migrate:local -w dns-list",
+    "migrate:dns-list:remote": "npm run migrate:remote -w dns-list",
+    "migrate:dns-search:local": "npm run migrate:local -w dns-search",
+    "migrate:dns-search:remote": "npm run migrate:remote -w dns-search"
+  }
+}
