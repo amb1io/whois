@@ -13,6 +13,9 @@ const siteAuthor = "Rhamses Soares";
 const themeColor = "#2563eb";
 const searchApiUrl =
   import.meta.env.PUBLIC_DNS_SEARCH_API_URL ?? "http://localhost:8787/search";
+const notifyApiUrl =
+  import.meta.env.PUBLIC_DNS_NOTIFY_API_URL ??
+  searchApiUrl.replace(/\/search$/, "/notify");
 ---
 
 <html lang="en" class="h-full">
@@ -68,6 +71,7 @@ const searchApiUrl =
           x-data="domainSearch()"
           x-on:domain-search:start.window="onSearchStart()"
           x-on:domain-search:complete.window="onSearchComplete($event)"
+          x-on:monitor-notify:saved.window="onMonitorSaved($event)"
         >
           <WhoisResults />
           <div
@@ -109,7 +113,7 @@ const searchApiUrl =
 
     <Footer />
 
-    <script is:inline>
+    <script is:inline define:vars={{ notifyApiUrl }}>
       document.addEventListener("alpine:init", () => {
         Alpine.data("notificationsDropdown", () => ({
           open: false,
@@ -130,6 +134,7 @@ const searchApiUrl =
           searchedDomain: "",
           rows: [],
           error: null,
+          successMessage: "",
           cacheHeader: "",
           get hasResults() {
             return this.rows.length > 0;
@@ -139,8 +144,15 @@ const searchApiUrl =
           },
           onSearchStart() {
             this.error = null;
+            this.successMessage = "";
             this.rows = [];
             this.cacheHeader = "";
+          },
+          onMonitorSaved(event) {
+            const domain = event.detail?.domain;
+            this.successMessage = domain
+              ? `Monitoring preferences saved for ${domain}.`
+              : "Monitoring preferences saved.";
           },
           onSearchComplete(event) {
             const htmxEvent = event.detail;
@@ -225,28 +237,65 @@ const searchApiUrl =
           closeModal() {
             this.open = false;
           },
-          submit() {
+          async submit() {
             if (this.saving) return;
+            this.emailError = "";
+
+            if (!this.notifyChanges && !this.notifyExpiry) {
+              this.closeModal();
+              return;
+            }
+
+            const trimmedEmail = this.email.trim();
+            if (!trimmedEmail) {
+              this.emailError = "Email address is required.";
+              return;
+            }
+            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailPattern.test(trimmedEmail)) {
+              this.emailError = "Please enter a valid email address.";
+              return;
+            }
+
+            const scope =
+              this.notifyChanges && this.notifyExpiry
+                ? "all"
+                : this.notifyChanges
+                  ? "changes"
+                  : "expiring";
+
             this.saving = true;
             try {
-              if (!this.notifyChanges && !this.notifyExpiry) {
-                this.emailError = "";
-                this.closeModal();
+              const response = await fetch(notifyApiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  domain: this.domain,
+                  scope,
+                  notify_at: trimmedEmail,
+                }),
+              });
+
+              if (!response.ok) {
+                let message = `Request failed (${response.status})`;
+                try {
+                  const payload = await response.json();
+                  message = payload.error || message;
+                } catch {
+                  // keep default message
+                }
+                this.emailError = message;
                 return;
               }
-              if (this.showEmailField) {
-                const trimmedEmail = this.email.trim();
-                if (!trimmedEmail) {
-                  this.emailError = "Email address is required.";
-                  return;
-                }
-                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!emailPattern.test(trimmedEmail)) {
-                  this.emailError = "Please enter a valid email address.";
-                  return;
-                }
-              }
+
+              window.dispatchEvent(
+                new CustomEvent("monitor-notify:saved", {
+                  detail: { domain: this.domain },
+                })
+              );
               this.closeModal();
+            } catch {
+              this.emailError = "Unable to save monitoring preferences.";
             } finally {
               this.saving = false;
             }
