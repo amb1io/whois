@@ -7,8 +7,8 @@
     "deploy": "wrangler deploy",
     "types": "wrangler types",
     "test": "vitest run",
-    "migrate:local": "wrangler d1 migrations apply demos --local --persist-to ../.wrangler",
-    "migrate:remote": "wrangler d1 migrations apply demos --remote"
+    "migrate:local": "wrangler d1 migrations apply domain-monitor --local --persist-to ../.wrangler",
+    "migrate:remote": "wrangler d1 migrations apply domain-monitor --remote"
   },
   "dependencies": {
     "hono": "^4.7.11"
