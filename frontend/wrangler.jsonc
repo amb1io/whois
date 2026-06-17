@@ -1,5 +1,5 @@
 {
-  "name": "domains-reseller-frontend",
+  "name": "whois-frontend",
   "pages_build_output_dir": "./dist",
   "compatibility_date": "2026-06-16",
   "vars": {
