@@ -10,6 +10,7 @@ const { searchApiUrl } = Astro.props;
   id="domain-search-form"
   class="flex w-full flex-col items-center gap-4"
   hx-post={searchApiUrl}
+  hx-ext="json-enc"
   hx-swap="none"
   hx-indicator="#whois-loading"
   hx-on::before-request="window.dispatchEvent(new CustomEvent('domain-search:start'))"
