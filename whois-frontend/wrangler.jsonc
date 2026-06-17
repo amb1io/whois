@@ -7,8 +7,8 @@
     "binding": "ASSETS"
   },
   "vars": {
-    "PUBLIC_DNS_SEARCH_API_URL": "https://dns-search.YOUR_SUBDOMAIN.workers.dev/search",
-    "PUBLIC_DNS_NOTIFY_API_URL": "https://dns-search.YOUR_SUBDOMAIN.workers.dev/notify"
+    "PUBLIC_DNS_SEARCH_API_URL": "https://whois-api-search.amb1.workers.dev/search",
+    "PUBLIC_DNS_NOTIFY_API_URL": "https://whois-api-search.amb1.workers.dev/notify"
   },
   "observability": {
     "logs": {

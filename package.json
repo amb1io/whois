@@ -2,20 +2,20 @@
   "name": "domains-reseller",
   "private": true,
   "workspaces": [
-    "dns-list",
-    "dns-search",
-    "frontend"
+    "whois-scheduler",
+    "whois-api-search",
+    "whois-frontend"
   ],
   "scripts": {
-    "dev:dns-list": "npm run dev -w dns-list",
-    "dev:dns-search": "npm run dev -w dns-search",
-    "dev:frontend": "npm run dev -w frontend",
-    "deploy:dns-list": "npm run deploy -w dns-list",
-    "deploy:dns-search": "npm run deploy -w dns-search",
-    "deploy:frontend": "npm run deploy -w frontend",
-    "migrate:dns-list:local": "npm run migrate:local -w dns-list",
-    "migrate:dns-list:remote": "npm run migrate:remote -w dns-list",
-    "migrate:dns-search:local": "npm run migrate:local -w dns-search",
-    "migrate:dns-search:remote": "npm run migrate:remote -w dns-search"
+    "dev:whois-scheduler": "npm run dev -w whois-scheduler",
+    "dev:whois-api-search": "npm run dev -w whois-api-search",
+    "dev:whois-frontend": "npm run dev -w whois-frontend",
+    "deploy:whois-scheduler": "npm run deploy -w whois-scheduler",
+    "deploy:whois-api-search": "npm run deploy -w whois-api-search",
+    "deploy:whois-frontend": "npm run deploy -w whois-frontend",
+    "migrate:whois-scheduler:local": "npm run migrate:local -w whois-scheduler",
+    "migrate:whois-scheduler:remote": "npm run migrate:remote -w whois-scheduler",
+    "migrate:whois-api-search:local": "npm run migrate:local -w whois-api-search",
+    "migrate:whois-api-search:remote": "npm run migrate:remote -w whois-api-search"
   }
 }

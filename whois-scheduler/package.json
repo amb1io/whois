@@ -1,5 +1,5 @@
 {
-  "name": "dns-list",
+  "name": "whois-scheduler",
   "private": true,
   "type": "module",
   "scripts": {
