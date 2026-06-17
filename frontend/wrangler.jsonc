@@ -4,5 +4,14 @@
   "compatibility_date": "2026-06-16",
   "vars": {
     "PUBLIC_DNS_SEARCH_API_URL": "https://dns-search.YOUR_SUBDOMAIN.workers.dev/search"
-  }
+  },
+  "observability": {
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    },
+    "traces": {
+      "enabled": true
+    }
+  },
 }
