@@ -364,6 +364,29 @@ const notifyApiUrl =
           },
         ];
       }
+
+      function runQueryParamSearch() {
+        const domain = new URLSearchParams(window.location.search).get("q")?.trim();
+        if (!domain) {
+          return;
+        }
+
+        const input = document.getElementById("domain-search-input");
+        const form = document.getElementById("domain-search-form");
+        if (!(input instanceof HTMLInputElement) || !(form instanceof HTMLFormElement)) {
+          return;
+        }
+
+        input.value = domain;
+        window.dispatchEvent(new CustomEvent("domain-search:start"));
+        form.requestSubmit();
+
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete("q");
+        history.replaceState({}, "", cleanUrl);
+      }
+
+      window.addEventListener("load", runQueryParamSearch);
     </script>
   </body>
 </html>
