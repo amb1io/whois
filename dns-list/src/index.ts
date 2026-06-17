@@ -1,3 +1,4 @@
+import { syncNotifySubscriptions } from "./sync-notify";
 import { syncRdapBootstrap } from "./sync";
 
 export default {
@@ -6,6 +7,8 @@ export default {
     env: Env,
     ctx: ExecutionContext
   ): Promise<void> {
-    ctx.waitUntil(syncRdapBootstrap(env));
+    ctx.waitUntil(
+      Promise.all([syncRdapBootstrap(env), syncNotifySubscriptions(env)])
+    );
   },
 };
