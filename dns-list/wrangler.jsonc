@@ -7,6 +7,12 @@
   "observability": {
     "enabled": true
   },
+  "vars": {
+    "AWS_SES_REGION": "sa-east-1",
+    "SES_FROM_EMAIL": "domains@ambiente1.com.br",
+    "SES_FROM_NAME": "Ambiente1 Domains",
+    "FRONTEND_URL": "http://localhost:4321"
+  },
   "triggers": {
     "crons": ["0 0 * * *"]
   },

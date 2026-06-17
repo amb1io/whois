@@ -1,3 +1,4 @@
+import { sendDomainNotifyEmail } from "./email/notify-email";
 import { fetchDomainRdap } from "./fetch-domain-rdap";
 import { upsertDomainDescription } from "./persist-domains";
 import { extractRdapEventDates } from "./rdap";
@@ -53,6 +54,28 @@ async function processChangesFlow(env: Env, row: NotifyRow): Promise<void> {
       reason: "last_changed",
     })
   );
+
+  try {
+    await sendDomainNotifyEmail(env, row, "last_changed");
+    console.log(
+      JSON.stringify({
+        event: "notify_email_sent",
+        domain: row.domain,
+        to: row.notify_at,
+        reason: "last_changed",
+      })
+    );
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: "notify_email_failed",
+        domain: row.domain,
+        to: row.notify_at,
+        reason: "last_changed",
+        error: String(error),
+      })
+    );
+  }
 }
 
 async function processExpiringFlow(
@@ -83,6 +106,28 @@ async function processExpiringFlow(
       reason: "expiring",
     })
   );
+
+  try {
+    await sendDomainNotifyEmail(env, row, "expiring");
+    console.log(
+      JSON.stringify({
+        event: "notify_email_sent",
+        domain: row.domain,
+        to: row.notify_at,
+        reason: "expiring",
+      })
+    );
+  } catch (error) {
+    console.error(
+      JSON.stringify({
+        event: "notify_email_failed",
+        domain: row.domain,
+        to: row.notify_at,
+        reason: "expiring",
+        error: String(error),
+      })
+    );
+  }
 }
 
 function runsChangesFlow(scope: NotifyScope): boolean {
