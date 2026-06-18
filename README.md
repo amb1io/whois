@@ -2,11 +2,11 @@
 
 Monorepo for **Domain Alert** — WHOIS/RDAP lookup, domain monitoring subscriptions, and email notifications when monitored domains change or expire.
 
-Built on Cloudflare Workers, D1, KV, and Pages. The three packages share the same D1 database (`demos`) in local development via `--persist-to ../.wrangler`.
+Built on Cloudflare Workers, D1, KV, and Pages. The three packages share the same D1 database (`domain-monitor`) in local development via `--persist-to ../.wrangler`.
 
 ## Project structure
 
-### [`dns-list/`](dns-list/)
+### [`whois-scheduler/`](whois-scheduler/)
 
 Scheduled Cloudflare Worker (cron: daily at 00:00 UTC). No public HTTP routes.
 
@@ -20,7 +20,7 @@ Scheduled Cloudflare Worker (cron: daily at 00:00 UTC). No public HTTP routes.
 
 Secrets and config: copy `.dev.vars.example` to `.dev.vars` (SES credentials, `FRONTEND_URL`).
 
-### [`dns-search/`](dns-search/)
+### [`whois-api-search/`](whois-api-search/)
 
 HTTP API Worker (Hono) used by the frontend.
 
@@ -37,9 +37,9 @@ HTTP API Worker (Hono) used by the frontend.
 
 Uses D1 for persistence and KV for response cache. Includes Vitest tests (e.g. `.com.br` RDAP URL handling).
 
-### [`frontend/`](frontend/)
+### [`whois-frontend/`](whois-frontend/)
 
-Astro + Tailwind + HTMX + Alpine.js UI, deployed to Cloudflare Pages.
+Astro + Tailwind + HTMX + Alpine.js UI, deployed to Cloudflare Workers.
 
 | Area | Purpose |
 |------|---------|
@@ -53,11 +53,11 @@ Supports deep links: `?q=example.com` auto-fills the search form and loads resul
 
 | Resource | Used by | Role |
 |----------|---------|------|
-| D1 `demos` | `dns-list`, `dns-search` | RDAP servers, cached domains, notify subscriptions |
-| KV `CACHE` | `dns-search` only | Fast RDAP response cache |
-| AWS SES | `dns-list` only | Email alerts to `notify_at` addresses |
+| D1 `domain-monitor` | `whois-scheduler`, `whois-api-search` | RDAP servers, cached domains, notify subscriptions |
+| KV `CACHE` | `whois-api-search` only | Fast RDAP response cache |
+| AWS SES | `whois-scheduler` only | Email alerts to `notify_at` addresses |
 
-RDAP helper logic is duplicated per worker (`dns-list/src/`, `dns-search/src/`) so each package stays self-contained.
+RDAP helper logic is duplicated per worker (`whois-scheduler/src/`, `whois-api-search/src/`) so each package stays self-contained.
 
 ## Getting started
 
@@ -65,35 +65,35 @@ RDAP helper logic is duplicated per worker (`dns-list/src/`, `dns-search/src/`) 
 npm install
 
 # Apply migrations (shared local D1 state)
-npm run migrate:dns-list:local
-npm run migrate:dns-search:local
+npm run migrate:whois-scheduler:local
+npm run migrate:whois-api-search:local
 
 # Run services (use separate terminals)
-npm run dev:dns-search   # http://localhost:8787
-npm run dev:dns-list     # cron via GET /__scheduled
-npm run dev:frontend     # http://localhost:4321
+npm run dev:whois-api-search   # http://localhost:8787
+npm run dev:whois-scheduler    # cron via GET /__scheduled
+npm run dev:whois-frontend     # http://localhost:4321
 ```
 
-Trigger the dns-list cron locally:
+Trigger the whois-scheduler cron locally:
 
 ```bash
-curl "http://localhost:8787/__scheduled?cron=0+0+*+*+*"   # if dns-list on 8787
+curl "http://localhost:8789/__scheduled?cron=0+0+*+*+*"   # if whois-scheduler on 8789
 ```
 
-Run dns-search tests:
+Run whois-api-search tests:
 
 ```bash
-npm run test -w dns-search
+npm run test -w whois-api-search
 ```
 
 ## Deploy
 
 ```bash
-npm run migrate:dns-list:remote
-npm run migrate:dns-search:remote
-npm run deploy:dns-list
-npm run deploy:dns-search
-npm run deploy:frontend
+npm run migrate:whois-scheduler:remote
+npm run migrate:whois-api-search:remote
+npm run deploy:whois-scheduler
+npm run deploy:whois-api-search
+npm run deploy:whois-frontend
 ```
 
-Set production secrets for `dns-list` with `wrangler secret put` (`AWS_SES_ACCESS_KEY_ID`, `AWS_SES_SECRET_ACCESS_KEY`) and update `FRONTEND_URL` / frontend API URLs in each package's `wrangler.jsonc` or environment.
+Set production secrets for `whois-scheduler` with `wrangler secret put` (`AWS_SES_ACCESS_KEY_ID`, `AWS_SES_SECRET_ACCESS_KEY`) and update `FRONTEND_URL` / API URLs in each package's `wrangler.jsonc` or environment.

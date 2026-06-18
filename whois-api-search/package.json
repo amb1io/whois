@@ -1,5 +1,5 @@
 {
-  "name": "dns-search",
+  "name": "whois-api-search",
   "private": true,
   "type": "module",
   "scripts": {
