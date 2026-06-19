@@ -1,7 +1,7 @@
 import { sendDomainNotifyEmail } from "./email/notify-email";
-import { fetchDomainRdap } from "./fetch-domain-rdap";
+import { fetchDomainLookup } from "./fetch-domain-rdap";
 import { upsertDomainDescription } from "./persist-domains";
-import { extractRdapEventDates } from "./rdap";
+import { extractDomainEventDates } from "./domain-dates";
 
 type NotifyScope = "expiring" | "all" | "changes";
 
@@ -33,17 +33,17 @@ async function updateNotifyLastChanged(
 }
 
 async function processChangesFlow(env: Env, row: NotifyRow): Promise<void> {
-  const rdap = await fetchDomainRdap(env, row.domain);
-  if (!rdap) {
+  const data = await fetchDomainLookup(env, row.domain);
+  if (!data) {
     return;
   }
 
-  const { lastChanged } = extractRdapEventDates(rdap);
+  const { lastChanged } = extractDomainEventDates(data);
   if (!lastChanged || lastChanged === row.last_changed) {
     return;
   }
 
-  await upsertDomainDescription(env, row.domain, JSON.stringify(rdap));
+  await upsertDomainDescription(env, row.domain, JSON.stringify(data));
   await updateNotifyLastChanged(env, row, lastChanged);
 
   console.log(
@@ -91,12 +91,12 @@ async function processExpiringFlow(
     return;
   }
 
-  const rdap = await fetchDomainRdap(env, row.domain);
-  if (!rdap) {
+  const data = await fetchDomainLookup(env, row.domain);
+  if (!data) {
     return;
   }
 
-  await upsertDomainDescription(env, row.domain, JSON.stringify(rdap));
+  await upsertDomainDescription(env, row.domain, JSON.stringify(data));
 
   console.log(
     JSON.stringify({
