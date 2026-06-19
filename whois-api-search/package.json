@@ -6,7 +6,8 @@
     "dev": "wrangler dev --persist-to ../.wrangler",
     "deploy": "wrangler deploy",
     "types": "wrangler types",
-    "test": "vitest run",
+    "test": "vitest run --exclude src/whois-only.integration.test.ts",
+    "test:whois-only": "vitest run src/whois-only.config.test.ts src/whois-only.integration.test.ts",
     "migrate:local": "wrangler d1 migrations apply domain-monitor --local --persist-to ../.wrangler",
     "migrate:remote": "wrangler d1 migrations apply domain-monitor --remote"
   },

@@ -1,16 +1,30 @@
 import { Hono } from "hono";
+import { extractDomainEventDates } from "../domain-dates";
+import { resolveDomain } from "../resolve-domain";
+import { normalizeDomain } from "../tld";
 import {
   type NotifyScope,
   upsertNotifySubscription,
 } from "../notify-persist";
-import { extractRdapEventDates } from "../rdap";
-import { resolveDomainRdap } from "../resolve-rdap";
-import { normalizeDomain } from "../tld";
 
 const NOTIFY_SCOPES = new Set<NotifyScope>(["expiring", "all", "changes"]);
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const notifyRoute = new Hono<{ Bindings: Env }>();
+
+function domainPayload(resolved: Exclude<Awaited<ReturnType<typeof resolveDomain>>, { kind: "error" }>): Record<string, unknown> {
+  if (resolved.kind === "rdap") {
+    return resolved.rdap;
+  }
+
+  return {
+    source: "whois",
+    ldhName: resolved.ldhName,
+    whoisText: resolved.whoisText,
+    updatedDate: resolved.updatedDate,
+    expiryDate: resolved.expiryDate,
+  };
+}
 
 notifyRoute.post("/notify", async (c) => {
   let body: { domain?: string; scope?: string; notify_at?: string };
@@ -39,12 +53,14 @@ notifyRoute.post("/notify", async (c) => {
     return c.json({ error: "invalid notify_at email" }, 400);
   }
 
-  const resolved = await resolveDomainRdap(c.env, domain);
-  if (!resolved) {
-    return c.json({ error: "rdap data not found for domain" }, 404);
+  const resolved = await resolveDomain(c.env, domain);
+  if (resolved.kind === "error") {
+    return c.json({ error: resolved.error }, resolved.status);
   }
 
-  const { expiringDate, lastChanged } = extractRdapEventDates(resolved.rdap);
+  const { expiringDate, lastChanged } = extractDomainEventDates(
+    domainPayload(resolved)
+  );
 
   try {
     await upsertNotifySubscription(c.env, {

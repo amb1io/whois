@@ -1,7 +1,3 @@
-import { tldCandidates } from "./tld";
-
-export const RDAP_ORG_FALLBACK = "https://rdap.org";
-
 function rdapBaseHasRootPath(base: string): boolean {
   try {
     const { pathname } = new URL(base);
@@ -29,10 +25,6 @@ export function buildRdapUrl(rdapBase: string, domain: string): string {
   return `${base}/rdap/domain/${domain}`;
 }
 
-export function buildRdapOrgFallbackUrl(domain: string): string {
-  return `${RDAP_ORG_FALLBACK}/domain/${domain}`;
-}
-
 export function treatRdapResponse(raw: unknown): Record<string, unknown> {
   if (!raw || typeof raw !== "object") {
     throw new Error("invalid rdap response");
@@ -44,32 +36,6 @@ export function treatRdapResponse(raw: unknown): Record<string, unknown> {
   }
 
   return data;
-}
-
-export async function lookupRdapServer(
-  db: D1Database,
-  tld: string
-): Promise<string | null> {
-  const row = await db
-    .prepare("SELECT rdap FROM rdap_whois_server WHERE tld = ? LIMIT 1")
-    .bind(tld)
-    .first<{ rdap: string }>();
-
-  return row?.rdap ?? null;
-}
-
-export async function lookupRdapServerForDomain(
-  db: D1Database,
-  domain: string
-): Promise<{ tld: string; rdap: string } | null> {
-  for (const tld of tldCandidates(domain)) {
-    const rdap = await lookupRdapServer(db, tld);
-    if (rdap) {
-      return { tld, rdap };
-    }
-  }
-
-  return null;
 }
 
 export async function fetchRdap(
