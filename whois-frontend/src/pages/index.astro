@@ -1,21 +1,16 @@
 ---
 import "../styles/global.css";
-import Header from "../components/Header.astro";
 import SearchForm from "../components/SearchForm.astro";
 import WhoisResults from "../components/WhoisResults.astro";
-import MonitorModal from "../components/MonitorModal.astro";
 import Footer from "../components/Footer.astro";
 
 const siteTitle = "Domain Alert";
 const siteDescription =
-  "Monitor WHOIS changes, receive domain expiration alerts, and stay ahead of critical DNS updates.";
+  "Look up WHOIS and RDAP records for domains you care about.";
 const siteAuthor = "Rhamses Soares";
 const themeColor = "#2563eb";
 const searchApiUrl =
   import.meta.env.PUBLIC_DNS_SEARCH_API_URL ?? "http://localhost:8787/search";
-const notifyApiUrl =
-  import.meta.env.PUBLIC_DNS_NOTIFY_API_URL ??
-  searchApiUrl.replace(/\/search$/, "/notify");
 ---
 
 <html lang="en" class="h-full">
@@ -49,9 +44,7 @@ const notifyApiUrl =
     </style>
   </head>
   <body class="flex min-h-screen flex-col bg-slate-100 text-slate-900">
-    <Header />
-
-    <main class="flex flex-1 flex-col items-center justify-center px-4">
+    <main class="flex flex-1 flex-col items-center justify-center px-4 pt-8">
       <div
         class="flex w-full max-w-3xl flex-col items-center gap-8 text-center"
       >
@@ -61,51 +54,23 @@ const notifyApiUrl =
           Domain <span class="text-blue-600">Alert</span>
         </h1>
         <p class="text-base text-slate-600 sm:text-lg">
-          Track availability, price changes, and expirations for domains you
-          care about.
+          Search domain registration details, nameservers, and expiration dates.
         </p>
         <SearchForm searchApiUrl={searchApiUrl} />
         <section
-          id="monitor-domain"
           class="flex w-full max-w-2xl flex-col items-stretch gap-4 text-left"
           x-data="domainSearch()"
           x-on:domain-search:start.window="onSearchStart()"
           x-on:domain-search:complete.window="onSearchComplete($event)"
-          x-on:monitor-notify:saved.window="onMonitorSaved($event)"
         >
           <WhoisResults />
           <div
             id="whois-loading"
-            class="mt-2 items-center gap-2 text-sm text-slate-600"
+            class="mt-2 text-sm text-slate-600"
             role="status"
             aria-live="polite"
           >
-            <svg
-              class="h-4 w-4 animate-spin text-blue-600"
-              xmlns="http://www.w3.org/2000/svg"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                class="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                stroke-width="4"></circle>
-              <path
-                class="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-            </svg>
-            <span>Fetching WHOIS details...</span>
-          </div>
-          <div
-            x-data="monitorModal()"
-            x-on:monitor-modal:open.window="openModal($event.detail.domain)"
-            x-on:keydown.escape.window="closeModal()"
-          >
-            <MonitorModal />
+            Fetching WHOIS details...
           </div>
         </section>
       </div>
@@ -113,28 +78,12 @@ const notifyApiUrl =
 
     <Footer />
 
-    <script is:inline define:vars={{ notifyApiUrl }}>
+    <script is:inline>
       document.addEventListener("alpine:init", () => {
-        Alpine.data("notificationsDropdown", () => ({
-          open: false,
-          notifications: [],
-          loading: false,
-          get hasNotifications() {
-            return this.notifications.length > 0;
-          },
-          toggle() {
-            this.open = !this.open;
-          },
-          close() {
-            this.open = false;
-          },
-        }));
-
         Alpine.data("domainSearch", () => ({
           searchedDomain: "",
           rows: [],
           error: null,
-          successMessage: "",
           get hasResults() {
             return this.rows.length > 0;
           },
@@ -143,14 +92,7 @@ const notifyApiUrl =
           },
           onSearchStart() {
             this.error = null;
-            this.successMessage = "";
             this.rows = [];
-          },
-          onMonitorSaved(event) {
-            const domain = event.detail?.domain;
-            this.successMessage = domain
-              ? `Monitoring preferences saved for ${domain}.`
-              : "Monitoring preferences saved.";
           },
           onSearchComplete(event) {
             const htmxEvent = event.detail;
@@ -187,113 +129,6 @@ const notifyApiUrl =
                 `Request failed (${xhr.status})`;
             } catch {
               this.error = xhr.responseText || `Request failed (${xhr.status})`;
-            }
-          },
-        }));
-
-        Alpine.data("monitorModal", () => ({
-          open: false,
-          domain: "",
-          notifyChanges: false,
-          notifyExpiry: false,
-          email: "",
-          emailError: "",
-          saving: false,
-          init() {
-            this.$watch("notifyChanges", () => {
-              if (!this.showEmailField) {
-                this.email = "";
-                this.emailError = "";
-              }
-            });
-            this.$watch("notifyExpiry", () => {
-              if (!this.showEmailField) {
-                this.email = "";
-                this.emailError = "";
-              }
-            });
-          },
-          get modalSubtitle() {
-            if (!this.domain) {
-              return "Choose how you want to stay informed about this domain.";
-            }
-            return `Choose how you want to stay informed about ${this.domain}.`;
-          },
-          get showEmailField() {
-            return this.notifyChanges || this.notifyExpiry;
-          },
-          openModal(domain) {
-            this.domain = domain || "";
-            this.notifyChanges = false;
-            this.notifyExpiry = false;
-            this.email = "";
-            this.emailError = "";
-            this.open = true;
-          },
-          closeModal() {
-            this.open = false;
-          },
-          async submit() {
-            if (this.saving) return;
-            this.emailError = "";
-
-            if (!this.notifyChanges && !this.notifyExpiry) {
-              this.closeModal();
-              return;
-            }
-
-            const trimmedEmail = this.email.trim();
-            if (!trimmedEmail) {
-              this.emailError = "Email address is required.";
-              return;
-            }
-            const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailPattern.test(trimmedEmail)) {
-              this.emailError = "Please enter a valid email address.";
-              return;
-            }
-
-            const scope =
-              this.notifyChanges && this.notifyExpiry
-                ? "all"
-                : this.notifyChanges
-                  ? "changes"
-                  : "expiring";
-
-            this.saving = true;
-            try {
-              const response = await fetch(notifyApiUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  domain: this.domain,
-                  scope,
-                  notify_at: trimmedEmail,
-                }),
-              });
-
-              if (!response.ok) {
-                let message = `Request failed (${response.status})`;
-                try {
-                  const payload = await response.json();
-                  message = payload.error || message;
-                } catch {
-                  // keep default message
-                }
-                this.emailError = message;
-                return;
-              }
-
-              window.dispatchEvent(
-                new CustomEvent("monitor-notify:saved", {
-                  detail: { domain: this.domain },
-                })
-              );
-              this.closeModal();
-            } catch {
-              this.emailError = "Unable to save monitoring preferences.";
-            } finally {
-              this.saving = false;
             }
           },
         }));

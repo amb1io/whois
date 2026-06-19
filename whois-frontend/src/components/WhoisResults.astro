@@ -15,12 +15,6 @@
 
       <template x-if="hasResults">
     <div class="space-y-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-      <template x-if="successMessage">
-        <div
-          class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700 shadow-sm"
-          x-text="successMessage"
-        ></div>
-      </template>
       <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 shadow-sm">
         <p>
           Latest lookup for
@@ -46,13 +40,6 @@
           </tbody>
         </table>
       </div>
-      <button
-        type="button"
-        class="inline-flex w-full items-center justify-center rounded-full bg-blue-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:ring-offset-2 focus:ring-offset-white"
-        x-on:click="$dispatch('monitor-modal:open', { domain: searchedDomain })"
-      >
-        Monitor this domain
-      </button>
     </div>
   </template>
 </div>
