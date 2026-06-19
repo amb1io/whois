@@ -1,0 +1,1 @@
+ALTER TABLE rdap_whois_server ADD COLUMN whois TEXT NOT NULL DEFAULT '';

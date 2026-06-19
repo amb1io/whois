@@ -317,6 +317,23 @@ const notifyApiUrl =
       }
 
       function parseRdapRows(data) {
+        if (data.source === "whois") {
+          return [
+            { label: "Domain", value: data.ldhName || "—", pre: false },
+            {
+              label: "Updated At",
+              value: formatDate(data.updatedDate),
+              pre: false,
+            },
+            {
+              label: "Expires At",
+              value: formatDate(data.expiryDate),
+              pre: false,
+            },
+            { label: "WHOIS", value: data.whoisText || "—", pre: true },
+          ];
+        }
+
         const registrar = (data.entities || []).find((entity) =>
           (entity.roles || []).includes("registrar")
         );

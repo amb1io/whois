@@ -1,12 +1,6 @@
 import { Hono } from "hono";
-import { resolveDomainRdap } from "../resolve-rdap";
+import { resolveDomain } from "../resolve-domain";
 import { normalizeDomain } from "../tld";
-import {
-  buildRdapOrgFallbackUrl,
-  buildRdapUrl,
-  fetchRdap,
-  lookupRdapServerForDomain,
-} from "../rdap";
 
 const searchRoute = new Hono<{ Bindings: Env }>();
 
@@ -15,6 +9,19 @@ function rdapJsonResponse(body: string, cache: "HIT" | "MISS" | "D1"): Response 
     status: 200,
     headers: {
       "Content-Type": "application/rdap+json",
+      "X-Cache": cache,
+    },
+  });
+}
+
+function whoisJsonResponse(
+  body: Record<string, unknown>,
+  cache: "HIT" | "MISS" | "D1"
+): Response {
+  return new Response(JSON.stringify(body), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
       "X-Cache": cache,
     },
   });
@@ -43,29 +50,25 @@ searchRoute.post("/search", async (c) => {
     return c.json({ error: "invalid domain" }, 400);
   }
 
-  const resolved = await resolveDomainRdap(c.env, domain);
-  if (resolved) {
+  const resolved = await resolveDomain(c.env, domain);
+  if (resolved.kind === "error") {
+    return c.json({ error: resolved.error }, resolved.status);
+  }
+
+  if (resolved.kind === "rdap") {
     return rdapJsonResponse(resolved.description, resolved.cache);
   }
 
-  const match = await lookupRdapServerForDomain(c.env.DB, domain);
-  const rdapUrl = match
-    ? buildRdapUrl(match.rdap, domain)
-    : buildRdapOrgFallbackUrl(domain);
-
-  let upstream;
-  try {
-    upstream = await fetchRdap(rdapUrl);
-  } catch {
-    return c.json({ error: "upstream rdap request failed" }, 502);
-  }
-
-  return new Response(upstream.body, {
-    status: upstream.status,
-    headers: {
-      "Content-Type": upstream.contentType ?? "application/json",
+  return whoisJsonResponse(
+    {
+      source: "whois",
+      ldhName: resolved.ldhName,
+      whoisText: resolved.whoisText,
+      updatedDate: resolved.updatedDate,
+      expiryDate: resolved.expiryDate,
     },
-  });
+    resolved.cache
+  );
 });
 
 export { searchRoute };

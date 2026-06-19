@@ -36,7 +36,11 @@
                   class="w-40 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500"
                   x-text="row.label"
                 ></th>
-                <td class="px-4 py-3 text-sm text-slate-800" x-text="row.value"></td>
+                <td
+                  class="px-4 py-3 text-sm text-slate-800"
+                  :class="row.pre ? 'whitespace-pre-wrap font-mono text-xs' : ''"
+                  x-text="row.value"
+                ></td>
               </tr>
             </template>
           </tbody>
